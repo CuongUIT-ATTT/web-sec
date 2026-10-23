@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vampi-authz-lab"
+version = "0.1.0"
+description = "Safe, fixture-backed authorization testing for the local VAmPI teaching lab"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Local lab project" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = []
+
+[project.scripts]
+vampi-authz-lab = "vampi_authz_lab.cli:main"
+vampi-bfla-disposable = "bfla_disposable.cli:main"
+
+[tool.setuptools]
+packages = ["bfla_disposable", "vampi_authz_lab", "week2", "week3", "week4"]

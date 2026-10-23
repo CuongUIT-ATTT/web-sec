@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "assessment_id": "zap-access-control-v1",
+  "purpose": "Constrained OWASP ZAP Access Control Testing for the authorized local VAmPI teaching lab.",
+  "target": "http://127.0.0.1:5000",
+  "allowed_requests": [
+    {
+      "method": "GET",
+      "path": "/books/v1/week1-userA-book",
+      "authorization_expectations": {
+        "userA": "allowed",
+        "userB": "denied",
+        "admin": "policy-dependent"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/books/v1/week1-userB-book",
+      "authorization_expectations": {
+        "userA": "denied",
+        "userB": "allowed",
+        "admin": "policy-dependent"
+      }
+    }
+  ],
+  "prohibitions": [
+    "/createdb",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "spider",
+    "ajax-spider",
+    "active-scan",
+    "fuzzing",
+    "identifier-enumeration",
+    "non-loopback-targets"
+  ],
+  "execution_requirements": [
+    "Use an ephemeral ZAP session bound only to 127.0.0.1:8080.",
+    "Do not import the full OpenAPI specification.",
+    "Seed the ZAP site tree manually with only the exact allowed_requests.",
+    "Configure a ZAP Context whose full-match include regexes contain only the exact allowed_requests.",
+    "Configure users and Access Control rules before a scan.",
+    "Inspect the resulting request queue and stop if any method or URL falls outside allowed_requests.",
+    "Do not export Authorization headers, bearer tokens, or full secret-bearing response bodies.",
+    "Remove the ZAP container and session data after the assessment."
+  ],
+  "stop_conditions": [
+    "Any request method other than GET appears in the context, history, or scan queue.",
+    "Any URL outside the two approved local book fixture paths appears in the context or scan queue.",
+    "The target differs from http://127.0.0.1:5000.",
+    "A required Access Control user or rule cannot be verified before scan start."
+  ]
+}

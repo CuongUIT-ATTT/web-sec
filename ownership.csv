@@ -1,0 +1,5 @@
+resource_type,resource_id,owner_role,owner_username,path_template
+book,week1-userA-book,userA,userA,/books/v1/{book_title}
+book,week1-userB-book,userB,userB,/books/v1/{book_title}
+user_profile,userA,userA,userA,/users/v1/{username}
+user_profile,userB,userB,userB,/users/v1/{username}

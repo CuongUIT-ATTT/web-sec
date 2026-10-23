@@ -1,0 +1,42 @@
+services:
+  vampi:
+    image: vampi-week1:local
+    labels:
+      project.vampi_authz_lab.workflow: "disposable-bfla-v1"
+      project.vampi_authz_lab.shared_week1: "untouched"
+    ports:
+      - "127.0.0.1:5003:5000"
+    environment:
+      vulnerable: "1"
+      tokentimetolive: "900"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - vampi_db:/vampi/database
+    networks:
+      - local_only
+      - host_access
+    restart: "no"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import urlopen; assert urlopen('http://127.0.0.1:5000/', timeout=2).status == 200"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+networks:
+  local_only:
+    internal: true
+  host_access:
+    internal: false
+
+volumes:
+  vampi_db:

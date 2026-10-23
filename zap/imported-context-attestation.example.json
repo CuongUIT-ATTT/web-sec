@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "context_name": "vampi-safe-authz",
+  "target": "http://127.0.0.1:5000",
+  "context_sha256": "replace-with-the-64-character-sha256-of-your-local-mode-0600-context-file",
+  "reviewed_users": [
+    "admin",
+    "userA",
+    "userB"
+  ],
+  "reviewed_paths": [
+    "/books/v1/week1-userA-book",
+    "/books/v1/week1-userB-book",
+    "/users/v1/userA",
+    "/users/v1/userB",
+    "/me"
+  ],
+  "access_rule_expectations": {
+    "/books/v1/week1-userA-book": {
+      "admin": "policy-dependent",
+      "userA": "allowed",
+      "userB": "denied"
+    },
+    "/books/v1/week1-userB-book": {
+      "admin": "policy-dependent",
+      "userA": "denied",
+      "userB": "allowed"
+    },
+    "/users/v1/userA": {
+      "admin": "allowed",
+      "userA": "allowed",
+      "userB": "allowed"
+    },
+    "/users/v1/userB": {
+      "admin": "allowed",
+      "userA": "allowed",
+      "userB": "allowed"
+    },
+    "/me": {
+      "admin": "allowed",
+      "userA": "allowed",
+      "userB": "allowed"
+    }
+  },
+  "reviewed_on": "YYYY-MM-DD",
+  "reviewer": "local-lab-operator"
+}

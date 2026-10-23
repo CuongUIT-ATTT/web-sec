@@ -1,0 +1,92 @@
+{
+  "schema_version": 2,
+  "assessment_id": "zap-access-control-v2",
+  "purpose": "Reviewed OWASP ZAP Access Control assessment for the authorized local VAmPI teaching lab. The runner permits only the declared GET fixtures.",
+  "target": "http://127.0.0.1:5000",
+  "zap_listener": "http://127.0.0.1:8080",
+  "context_name": "vampi-safe-authz",
+  "allowed_requests": [
+    {
+      "method": "GET",
+      "path": "/books/v1/week1-userA-book",
+      "description": "Known book owned by userA",
+      "authorization_expectations": {
+        "userA": "allowed",
+        "userB": "denied",
+        "admin": "policy-dependent"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/books/v1/week1-userB-book",
+      "description": "Known book owned by userB",
+      "authorization_expectations": {
+        "userA": "denied",
+        "userB": "allowed",
+        "admin": "policy-dependent"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/users/v1/userA",
+      "description": "Known public profile for userA",
+      "authorization_expectations": {
+        "userA": "allowed",
+        "userB": "allowed",
+        "admin": "allowed"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/users/v1/userB",
+      "description": "Known public profile for userB",
+      "authorization_expectations": {
+        "userA": "allowed",
+        "userB": "allowed",
+        "admin": "allowed"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/me",
+      "description": "Authenticated self-identity control",
+      "authorization_expectations": {
+        "userA": "allowed",
+        "userB": "allowed",
+        "admin": "allowed"
+      }
+    }
+  ],
+  "prohibitions": [
+    "/createdb",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "spider",
+    "ajax-spider",
+    "active-scan",
+    "fuzzing",
+    "identifier-enumeration",
+    "non-loopback-targets"
+  ],
+  "execution_requirements": [
+    "Use a fresh ZAP session bound only to 127.0.0.1:8080.",
+    "Import a manually reviewed local Context that contains exactly three enabled users: admin, userA, and userB.",
+    "The local Context and any authentication material are private mode-0600 files and must not be committed or copied into results.",
+    "The Context include regexes must match only these five absolute GET paths; Access Rules must be reviewed in ZAP Desktop before export.",
+    "Validate the Context against a non-secret fingerprint attestation before the scan.",
+    "Use only the Access Control add-on; do not spider, AJAX-spider, active-scan, fuzz, enumerate, or import the full OpenAPI specification.",
+    "Do not export Authorization headers, bearer tokens, credentials, request/response bodies, raw API errors, or raw ZAP HTML."
+  ],
+  "containment_policy": {
+    "authoritative_evidence": "Actual target HTTP messages returned by the paginated ZAP history API.",
+    "permitted_message": "GET to exactly http://127.0.0.1:5000 plus one listed path, with no query or fragment.",
+    "site_tree": "Bare origin and path-parent nodes are structural diagnostics only. They neither authorize nor block a scan.",
+    "block_conditions": [
+      "Any malformed request line or unavailable paginated history page.",
+      "Any non-GET method, query, fragment, foreign scheme/host/port, unapproved path, or /createdb request.",
+      "Any unverified Context, user, authentication state, or reviewed rule attestation."
+    ]
+  }
+}

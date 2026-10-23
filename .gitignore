@@ -1,0 +1,24 @@
+# Local VAmPI lab secrets and transient data
+roles_config.json
+# Private reviewed ZAP Context exports and local non-secret attestations.
+zap/*.context
+zap/imported-context-attestation.json
+zap/private/
+zap/run-output/
+.bfla-runs/
+
+# Generated Week 2 reports may contain lab response data
+results/
+
+# Python runtime and package-build files
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Downloaded third-party source checkout; retain locally as untrusted reference only.
+VAmPI-source/
+
+# Claude session runtime state is machine-specific and must not be versioned.
+.claude/scheduled_tasks.lock

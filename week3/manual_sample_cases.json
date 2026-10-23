@@ -1,0 +1,65 @@
+[
+  {
+    "sample_id": "M-01",
+    "title": "Owner control: userA reads own book",
+    "method": "GET",
+    "path": "/books/v1/week1-userA-book",
+    "authentication": "userA bearer token",
+    "expected": "200 and owner=userA with that fixture's secret",
+    "classification": "positive control"
+  },
+  {
+    "sample_id": "M-02",
+    "title": "Cross-user read: userB reads userA book",
+    "method": "GET",
+    "path": "/books/v1/week1-userA-book",
+    "authentication": "userB bearer token",
+    "expected": "denied or hidden by a correctly authorized API",
+    "classification": "BOLA candidate"
+  },
+  {
+    "sample_id": "M-03",
+    "title": "Cross-user read: userA reads userB book",
+    "method": "GET",
+    "path": "/books/v1/week1-userB-book",
+    "authentication": "userA bearer token",
+    "expected": "denied or hidden by a correctly authorized API",
+    "classification": "BOLA candidate"
+  },
+  {
+    "sample_id": "M-04",
+    "title": "Anonymous book read",
+    "method": "GET",
+    "path": "/books/v1/week1-userA-book",
+    "authentication": "none",
+    "expected": "401",
+    "classification": "negative control"
+  },
+  {
+    "sample_id": "M-05",
+    "title": "Invalid-token book read",
+    "method": "GET",
+    "path": "/books/v1/week1-userA-book",
+    "authentication": "intentionally invalid bearer token",
+    "expected": "401",
+    "classification": "negative control"
+  },
+  {
+    "sample_id": "M-06",
+    "title": "Anonymous user profile behavior",
+    "method": "GET",
+    "path": "/users/v1/userA",
+    "authentication": "none",
+    "expected": "record behavior only; current OpenAPI declares this operation public",
+    "classification": "public-object-read observation"
+  },
+  {
+    "sample_id": "M-07",
+    "title": "Role-token validation",
+    "method": "GET",
+    "path": "/me",
+    "authentication": "userA bearer token",
+    "expected": "200 and username=userA",
+    "classification": "authentication control"
+  }
+]
