@@ -90,15 +90,17 @@ resource_type,resource_id,owner_role,owner_username,path_template
 Existing source-checkout commands remain supported for compatibility:
 
 ```bash
-python3 -I week2/main.py
-python3 -I week3/run_week3.py
+.venv/bin/python -I week2/main.py
+.venv/bin/python -I week3/run_week3.py
 ```
 
-Run dependency-free unit tests after installation (or with the package otherwise on `sys.path`):
+Run dependency-free unit tests after installation. Because `-I` excludes the checkout from `sys.path`, use the installed project virtualenv:
 
 ```bash
 .venv/bin/python -I -m unittest discover -s tests -v
 ```
+
+The current complete suite contains **128 tests**. Historical report counts are stage-specific and not interchangeable: Week 2 recorded 13 tests, Week 3 recorded 19 before later BFLA/ZAP work, and the pre-quiescence Week 4 regression suite recorded 87.
 
 The packaging configuration is in `pyproject.toml`; no `requirements.txt` is provided because no non-standard-library runtime package is required.
 
@@ -109,7 +111,7 @@ The latest completed packaged rerun recorded 12 read-only known-fixture cases in
 The Week 2 implementation uses only the Python standard library. It reads the Week 1 OpenAPI spec, role configuration, and ownership CSV; creates a fixture-backed test matrix; and runs read-only checks only.
 
 ```bash
-python3 -I week2/main.py --base-url http://127.0.0.1:5000
+.venv/bin/python -I week2/main.py --base-url http://127.0.0.1:5000
 ```
 
 Before testing, the pipeline verifies VAmPI vulnerable mode, every role token via `GET /me`, and each owner’s known book fixture. It then writes redacted artifacts to `results/`:
@@ -129,10 +131,10 @@ Safety rules enforced by the runner:
 - `GET /createdb` is permanently blocked because it resets the lab database.
 - Request headers and bearer tokens are never persisted in output files.
 
-Run the unit tests without contacting Docker or the API:
+Run the unit tests without contacting Docker or the API. Because `-I` excludes the checkout from `sys.path`, use the project virtual environment after installing the package; a system `python3 -I` cannot import the packaged modules from the checkout:
 
 ```bash
-python3 -I -m unittest discover -s tests -v
+.venv/bin/python -I -m unittest discover -s tests -v
 ```
 
 ## Week 3 verification and comparison
@@ -140,7 +142,7 @@ python3 -I -m unittest discover -s tests -v
 Week 3 independently re-fetches owner baselines and cross-user book responses; it does not reuse the Week 2 comparator evidence to claim confirmation. It still permits only local `GET` requests to known fixtures.
 
 ```bash
-python3 -I week3/run_week3.py
+.venv/bin/python -I week3/run_week3.py
 ```
 
 Generated artifacts include independent verification, classification, timing, and a comparison table:
@@ -153,7 +155,7 @@ Generated artifacts include independent verification, classification, timing, an
 
 The seven manual Postman cases are functionally complete and independently confirm two user-to-user BOLA cases. Stopwatch timing was intentionally not measured; `results/week3_manual_worksheet.md` uses `—` and Week 4 reports this accurately as `COMPLETED_NO_TIMING`. Automated timing is never substituted for a human-tool timing metric.
 
-The historical ZAP artifact remains `NOT_RUN`; it provides no scanner finding, absence-of-finding, or false-negative result. The Week 4 implementation now requires a manually reviewed imported ZAP Context with exact rules/users plus fail-closed paginated HTTP-history containment. Site Tree parent nodes are diagnostics only, never standalone scan evidence. See `docs/week-4-report.md` for the private Context workflow.
+The current ZAP artifact is `COMPLETED` after a reviewed local Desktop run: 15 result rows (five fixtures × three users) and five scanner-labeled `ILLEGAL` rows. Two are **owner** book accesses (`userA` on book A and `userB` on book B), not the two confirmed cross-user BOLA cases; the remaining three are `/me` rows. These are rule-alignment discrepancies requiring Context/Access-Rule review, not new BOLA findings or independent confirmation of the two known BOLA cases. Because the redacted artifact persists only `ILLEGAL` rows, its absence of an admin-book finding does not prove a `VALID` result. The Week 4 implementation requires a manually reviewed imported ZAP Context with exact rules/users plus fail-closed paginated HTTP-history containment. Site Tree parent nodes are diagnostics only, never standalone scan evidence. See `docs/week-4-report.md` for the private Context workflow.
 
 ## Week 4 — BFLA disposable, ZAP evaluation and final comparison
 
@@ -165,18 +167,20 @@ Week 4 adds BFLA real execution on a disposable VAmPI container, ZAP Access Cont
 
 ```bash
 # Generate Week 4 BFLA findings from an existing disposable run:
-python3 -I week4/run_week4.py --run-id bf1a2026 --skip-zap
+.venv/bin/python -I week4/run_week4.py --run-id bf1a2026 --skip-zap
 ```
 
-### ZAP Access Control (verified imported Context)
+### ZAP Access Control (reviewed Context)
 
-ZAP allowlist v2 (`zap/allowlist-v2.json`) declares five safe GET URLs. The runner imports a manually reviewed, private mode-`0600` ZAP Context containing exactly `admin`, `userA`, and `userB` plus reviewed Access Rules. It validates a non-secret fingerprint attestation and paginated actual HTTP history before and after the scan. Site Tree parent nodes are diagnostics only.
+ZAP allowlist v2 (`zap/allowlist-v2.json`) declares five safe GET URLs. Every mode validates the local private mode-`0600` Context against its non-secret fingerprint attestation, then validates exact Context metadata, users, explicit successful ZAP poll state, and paginated actual HTTP history before and after the scan. The state gate accepts only the reviewed legacy or current Desktop response contract and never exports state payloads. Site Tree parent nodes are diagnostics only.
+
+**Docker import mode** (the default) imports the Context from an explicit, read-only ZAP-visible path:
 
 ```fish
-# Requires the reviewed private files and a fresh loopback-only ZAP daemon.
-python3 -I week4/run_week4.py \
+.venv/bin/python -I week4/run_week4.py \
   --run-id bf1a2026 \
-  --zap-api-key '<local-zap-api-key>' \
+  --zap-context-mode import \
+  --zap-api-key "$ZAP_KEY" \
   --zap-context zap/private/vampi-safe-authz.context \
   --zap-context-in-container /zap/context/vampi-safe-authz.context \
   --zap-attestation zap/imported-context-attestation.json \
@@ -184,7 +188,39 @@ python3 -I week4/run_week4.py \
   --zap-html-in-container /zap/output/access-control.html
 ```
 
-See `docs/week-4-report.md` for the Desktop review/export and Fish Docker commands. Until that validated real run produces a new redacted report, ZAP remains `NOT_RUN`.
+**Preloaded ZAP Desktop mode** is explicit. First manually load and review `vampi-safe-authz` in the same fresh Desktop session; the runner does not import, repair, or modify it:
+
+```fish
+# Copy the key from the local ZAP GUI; keep it only in this shell session.
+set -lx ZAP_KEY '<key-from-zap-gui>'
+
+set -l PROJECT (pwd)
+.venv/bin/python -I week4/run_week4.py \
+  --run-id bf1a2026 \
+  --zap-context-mode preloaded-desktop \
+  --zap-api-key "$ZAP_KEY" \
+  --zap-context "$PROJECT/zap/private/vampi-safe-authz.context" \
+  --zap-attestation "$PROJECT/zap/imported-context-attestation.json" \
+  --zap-html-on-host "$PROJECT/zap/run-output/access-control.html" \
+  --zap-html-in-container "$PROJECT/zap/run-output/access-control.html"
+```
+
+Preloaded mode never transfers Context data over the API; the local export remains only for private fingerprint validation. No mode enables file transfer, edits Access Rules, or broadens the five-GET scope. The disposable HTML-report path must be an absolute ZAP-visible path, distinct from both JSON artifact paths, and must not exist before a run; the runner owns and removes only the report it requested.
+
+After a Desktop restart, use the explicit **read-only bootstrap** first. It verifies only reviewed Context/user metadata and emits no target request, seed, scan, report, or history mutation:
+
+```fish
+set -l PROJECT (pwd)
+.venv/bin/python -I week4/run_week4.py \
+  --run-id bf1a2026 \
+  --zap-bootstrap-only \
+  --zap-context-mode preloaded-desktop \
+  --zap-api-key "$ZAP_KEY" \
+  --zap-context "$PROJECT/zap/private/vampi-safe-authz.context" \
+  --zap-attestation "$PROJECT/zap/imported-context-attestation.json"
+```
+
+When it returns `BOOTSTRAP_REQUIRES_OPERATOR_AUTH_AND_QUIESCE`, use ZAP Desktop—not the runner/API—to authenticate and poll each reviewed user, then stop browser/proxy/scanner traffic. Do not use `New Session`, automated node deletion, global Replacer rules, or copy token/header values. The normal preloaded command independently requires every user to remain authenticated, then requires two equal target-scoped Core message counts one second apart (retrying for no more than ten seconds). A quiescence timeout returns `NOT_RUN` before baseline capture, seeding, or scanning. Once quiesced, it captures the Core API target history as a private post-auth baseline, proves the seed delta has exactly one of each five fixed GETs, and requires every later scan delta to remain allowlisted. An empty History or Sites view is not containment evidence in ZAP 2.17: authentication/poll records can remain Core-API-visible while Desktop omits them. Counts, baseline identities, raw history, credentials, headers, tokens, and bodies are never exported. See `docs/week-4-report.md` for the detailed review process. The validated local run produced the current redacted `COMPLETED` artifact.
 
 ### Manual measurement
 
@@ -192,7 +228,7 @@ Seven manual Postman cases confirmed 2 BOLA user-to-user findings, matching the 
 
 ### Final comparison
 
-`results/week4_comparison_final.json` summarizes all four methods: custom script (2 BOLA confirmed), manual Postman (2 BOLA confirmed), ZAP (NOT_RUN), and BFLA disposable (DENIED_CONTROL).
+`results/week4_comparison_final.json` summarizes all four methods: custom script (2 BOLA confirmed), manual Postman (2 BOLA confirmed), ZAP (COMPLETED: 15 reviewed rows, 5 scanner-labeled rule anomalies), and BFLA disposable (DENIED_CONTROL). ZAP's output does not independently confirm either cross-user BOLA case and is not interchangeable with the script/Postman sensitive-field evidence.
 
 ### Reports
 

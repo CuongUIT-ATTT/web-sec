@@ -1,6 +1,6 @@
 # Báo cáo cuối kỳ — Kiểm thử Broken Access Control cho VAmPI local
 
-**Ngày cập nhật:** 22/10/2026  
+**Ngày cập nhật:** 26/10/2026
 **Phạm vi thực nghiệm:** VAmPI chạy trong Docker tại `http://127.0.0.1:5000`  
 **Nguyên tắc:** chỉ kiểm thử lab được ủy quyền, chỉ dùng fixture đã biết, không quét mục tiêu bên ngoài.
 
@@ -117,321 +117,81 @@ HTTP `200` không tự động được tính là BOLA. Negative control nhận 
 
 ---
 
-## Phần 3. Hướng dẫn tái hiện từng tuần
+## Phần 3. Kết quả thực nghiệm
 
-### Tuần 1 — Cài đặt môi trường
+### 3.1. Tổng hợp finding
 
-#### Mục tiêu
-Dựng Docker lab VAmPI local, tạo tài khoản `admin`, `userA`, `userB` và book fixture.
+| Mã | Loại | Phương pháp xác nhận | Trạng thái |
+| --- | --- | --- | --- |
+| W2-01 / W3-01 | BOLA: `userB` đọc book của `userA`; `userA` đọc book của `userB` | Script owner-baseline, xác minh độc lập Tuần 3 và Postman thủ công (M-02, M-03) | **Confirmed** — ba nguồn evidence độc lập |
+| W3-02 | Admin truy cập book user khác | Script | Policy-dependent; chưa xếp hạng |
+| W3-03 / Tuần 4 | BFLA: `DELETE /users/v1/{username}` | BFLA disposable workflow, có positive và negative control | `DENIED_CONTROL` — không xác nhận BFLA |
+| — | Public profile: `GET /users/v1/{username}` | Observation; OpenAPI khai báo public | Observation, không phải BOLA |
+| — | ZAP: owner access trên hai book path bị gắn `ILLEGAL` | ZAP Access Control rule-based | Rule-alignment discrepancy, không phải BOLA mới |
+| — | ZAP: ba row `/me` bị gắn `ILLEGAL` | ZAP Access Control rule-based | Rule-alignment discrepancy, không phải BOLA mới |
 
-#### Điều kiện
-- Docker đã cài đặt.
-- Không cần Internet sau khi pull image lần đầu.
+### 3.2. Script tự phát triển (Tuần 2–3)
 
-#### Các bước
+Script read-only thực thi 12 case trong **1990.362 ms**. Nó xác nhận hai BOLA user-to-user bằng cách so sánh fresh owner baseline với response cross-user tại JSON path `$.secret`. Đây là phương pháp chủ động duy nhất trong ba phương pháp có khả năng chứng minh trực tiếp việc rò rỉ dữ liệu ẩn sau HTTP `200`, thay vì chỉ suy luận từ status code hay rule scanner.
 
-```bash
-# 1. Build image VAmPI từ source
-cd VAmPI-source
-docker build -t vampi-week1:local .
-cd ..
+Hai case xác nhận là `userB → book userA` và `userA → book userB`. Hai request admin cross-user được giữ riêng ở trạng thái policy-dependent: kết quả chỉ trở thành finding nếu policy xác nhận admin không được phép bypass ownership.
 
-# 2. Chạy container
-docker run -d --name vampi-week1 \
-  -p 127.0.0.1:5000:5000 \
-  -e vulnerable=1 \
-  vampi-week1:local
+### 3.3. Kiểm thử thủ công bằng Postman (Tuần 3)
 
-# 3. Khởi tạo database
-curl -s http://127.0.0.1:5000/createdb
+Cả 7/7 case Postman đã hoàn thành. M-02 xác nhận `userB` đọc book của `userA`; M-03 xác nhận `userA` đọc book của `userB`. Hai kết quả này khớp hoàn toàn với script; M-04 và M-05 là negative control bị từ chối, M-06 là public-profile observation và M-07 là identity control pass.
 
-# 4. Tạo tài khoản (thay <password> bằng mật khẩu tự chọn)
-curl -s -X POST http://127.0.0.1:5000/users/v1/register \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"userA","password":"<passwordA>","email":"a@local.lab"}'
+Trạng thái evidence là `COMPLETED_NO_TIMING`: có kết quả định tính đầy đủ nhưng không có số đo stopwatch. Vì vậy, Postman được dùng làm xác minh chức năng độc lập, không được gán một metric thời gian suy diễn từ script.
 
-curl -s -X POST http://127.0.0.1:5000/users/v1/register \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"userB","password":"<passwordB>","email":"b@local.lab"}'
+### 3.4. OWASP ZAP Access Control (Tuần 4)
 
-# 5. Đăng nhập lấy token (ghi vào roles_config.json, mode 0600)
-curl -s -X POST http://127.0.0.1:5000/users/v1/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"userA","password":"<passwordA>"}'
-# → ghi auth_token vào roles_config.json
+Sau cấu hình Context bị thu hẹp còn năm URL, Manual Authentication qua JSON login, Header-based Session Management, Forced User Mode để xác minh thủ công, quiescence và history-containment gate, cùng các sửa lỗi response contract cho `core.accessUrl` và `accessControl/action/writeHTMLreport`, ZAP Access Control hoàn tất assessment với 15 result rows (5 path × 3 user). Containment đầy đủ: 15 request scan-delta đều là `GET` thuộc allowlist và `violation_counts` rỗng.
 
-# 6. Tạo book fixture
-curl -s -X POST http://127.0.0.1:5000/books/v1 \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <tokenUserA>' \
-  -d '{"book_title":"week1-userA-book","secret":"<secret-value-A>"}'
+Tuy nhiên, kết quả phải được diễn giải theo actor cụ thể, không theo path đơn thuần:
 
-curl -s -X POST http://127.0.0.1:5000/books/v1 \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <tokenUserB>' \
-  -d '{"book_title":"week1-userB-book","secret":"<secret-value-B>"}'
+- ZAP gắn `ILLEGAL` cho cả hai book path, nhưng actor bị gắn cờ là **owner**: `userA` trên book của `userA` và `userB` trên book của `userB`. Đây không phải hai actor cross-user (`userB → book userA`, `userA → book userB`) đã được script và Postman xác nhận là BOLA.
+- Artifact không xuất bất kỳ `ILLEGAL` row nào cho `admin` trên hai book path. Vì artifact redacted chỉ giữ row `ILLEGAL`, bốn tổ hợp book-user còn lại không được kết luận là `VALID`; chúng chỉ không xuất hiện trong finding.
+- Cả ba row `/me` bị gắn `ILLEGAL`, dù expected self-control là mỗi reviewed user được phép xem `/me` của chính họ.
 
-# 7. Lấy OpenAPI spec
-curl -s http://127.0.0.1:5000/openapi.json > vampi_spec.json
+Do đó, ZAP cung cấp tín hiệu ở mức endpoint và bằng chứng về sự lệch giữa reviewed rule với observed authorization; nó **không xác nhận độc lập** đúng hai test case BOLA cross-user. Owner-book và `/me` là scanner-labeled anomalies cần điều tra mapping/context, không phải BOLA mới. Một khả năng cần kiểm chứng là Access Rule self/owner bị cấu hình hoặc diễn giải ngược chiều, nhưng artifact hiện có không đủ để khẳng định nguyên nhân gốc rễ.
 
-# 8. Tạo ownership.csv
-cat > ownership.csv << 'EOF'
-resource_type,resource_id,owner_role,owner_username,path_template
-book,week1-userA-book,user,userA,/books/v1/{book_title}
-book,week1-userB-book,user,userB,/books/v1/{book_title}
-EOF
+### 3.5. BFLA disposable (Tuần 4)
 
-# 9. Tạo roles_config.json (mode 0600, KHÔNG commit)
-# Format: {"admin":{"username":"admin","token":"..."},
-#          "userA":{"username":"userA","token":"..."},
-#          "userB":{"username":"userB","token":"..."}}
-chmod 600 roles_config.json
-```
-
-#### Artifact Tuần 1
-- `vampi_spec.json` — OpenAPI spec
-- `ownership.csv` — fixture ownership map
-- `roles_config.json` — secret, mode `0600`
+BFLA được thực thi thật trên môi trường disposable tách biệt khỏi shared lab. Non-admin `DELETE` protected victim nhận `401` và victim vẫn tồn tại (negative control); admin `DELETE` disposable control nhận `200` và control bị xóa (positive control). Kết luận là **`DENIED_CONTROL`**: không có BFLA được xác nhận trong case đã test.
 
 ---
 
-### Tuần 2 — Pipeline kiểm thử authorization tự động
+## Phần 4. Đánh giá, so sánh và hướng tiếp theo
 
-#### Mục tiêu
-Chạy ma trận authorization read-only 12 case, phát hiện BOLA.
+### 4.1. Bảng so sánh bốn phương pháp
 
-#### Điều kiện
-- Tuần 1 hoàn thành; `vampi-week1` đang chạy.
-- Python ≥ 3.10.
-
-#### Các bước
-
-```bash
-# 1. Cài package
-python3 -m venv .venv
-.venv/bin/python -m pip install .
-
-# 2. Kiểm tra input
-.venv/bin/vampi-authz-lab check-inputs
-
-# 3. Chạy pipeline
-python3 -I week2/main.py --base-url http://127.0.0.1:5000
-# hoặc:
-.venv/bin/vampi-authz-lab run
-
-# 4. Chạy unit test
-python3 -I -m unittest discover -s tests -v
-```
-
-#### Artifact Tuần 2
-- `results/endpoint_inventory.json`
-- `results/ownership_map.json`
-- `results/test_matrix.json`
-- `results/preflight.json`
-- `results/raw_results.json`
-- `results/final_report.json`
-
-#### Kết quả chính
-- 12 case read-only; 2 BOLA user-to-user confirmed.
-- Admin cross-user: policy-dependent.
-- Anonymous/invalid-token: DENIED.
-- Public profile: OBSERVATION.
-
----
-
-### Tuần 3 — Xác minh độc lập, đo thủ công và đánh giá ZAP
-
-#### Mục tiêu
-Xác minh BOLA bằng fresh baseline độc lập, đo thủ công 7 case bằng Postman, đánh giá ZAP.
-
-#### Điều kiện
-- Tuần 2 hoàn thành; `vampi-week1` đang chạy.
-
-#### Các bước — Script xác minh
-
-```bash
-# 1. Chạy pipeline Tuần 3
-python3 -I week3/run_week3.py
-# hoặc:
-.venv/bin/vampi-authz-lab week3
-
-# 2. Chạy rerun đóng gói (tùy chọn)
-.venv/bin/vampi-authz-lab week3 --output-dir results/rerun-week3
-```
-
-#### Các bước — Đo thủ công Postman
-
-1. Mở Postman, tạo Environment `VAmPI Local`:
-   - `baseUrl` = `http://127.0.0.1:5000`
-   - `tokenUserA` = (Current Value only)
-   - `tokenUserB` = (Current Value only)
-
-2. Đăng nhập lấy token:
-   - `POST {{baseUrl}}/users/v1/login` → body `{"username":"userA","password":"<password>"}`
-   - Copy `auth_token` vào `tokenUserA` Current Value.
-   - Lặp lại cho `userB`.
-
-3. Tạo 7 request GET:
-   - M-01: `GET {{baseUrl}}/books/v1/week1-userA-book` — Bearer `{{tokenUserA}}`
-   - M-02: `GET {{baseUrl}}/books/v1/week1-userA-book` — Bearer `{{tokenUserB}}`
-   - M-03: `GET {{baseUrl}}/books/v1/week1-userB-book` — Bearer `{{tokenUserA}}`
-   - M-04: `GET {{baseUrl}}/books/v1/week1-userA-book` — No Auth
-   - M-05: `GET {{baseUrl}}/books/v1/week1-userA-book` — Bearer `invalid-token-value`
-   - M-06: `GET {{baseUrl}}/users/v1/userA` — No Auth
-   - M-07: `GET {{baseUrl}}/me` — Bearer `{{tokenUserA}}`
-
-4. Gửi từng request, đọc response, ghi status/ghi chú vào `results/week3_manual_worksheet.md`.
-
-5. Sau khi xong, xóa Current Value token. Không export nếu còn token.
-
-#### Artifact Tuần 3
-- `results/week3_manual_verification.json`
-- `results/week3_findings.json`
-- `results/week3_script_timing.json`
-- `results/week3_comparison.json`
-- `results/week3_manual_worksheet.md`
-- `results/zap/zap_run_status.json`
-
-#### Kết quả chính
-- Script: 2 BOLA confirmed (fresh baseline).
-- Thủ công: 2 BOLA confirmed (M-02, M-03), cùng kết luận với script.
-- ZAP: `NOT_RUN` do Site Tree containment.
-
----
-
-### Tuần 4 — BFLA disposable và bảng so sánh
-
-#### Mục tiêu
-Thực thi BFLA thật trên môi trường disposable, hoàn chỉnh bảng so sánh bốn phương pháp.
-
-#### Điều kiện
-- Tuần 3 hoàn thành.
-- Docker Compose đã cài đặt.
-- Port `5003` trống.
-- Image `vampi-week1:local` đã có.
-
-#### Các bước — BFLA disposable
-
-```bash
-# 1. Tạo manifest
-.venv/bin/vampi-bfla-disposable create-manifest --run-id <run-id>
-
-# 2. Preflight
-.venv/bin/vampi-bfla-disposable preflight --run-id <run-id>
-
-# 3. Khởi tạo container disposable
-docker compose \
-  --project-name vampi-bfla-<run-id> \
-  --file bfla-disposable/compose.yaml \
-  up --detach --wait --wait-timeout 60
-
-# 4. Chuẩn bị fixture
-.venv/bin/vampi-bfla-disposable prepare --run-id <run-id>
-
-# 5. Thực thi DELETE test
-.venv/bin/vampi-bfla-disposable execute --run-id <run-id>
-
-# 6. Dọn dẹp (LUÔN chạy)
-.venv/bin/vampi-bfla-disposable teardown --run-id <run-id>
-
-# 7. Tạo artifact Tuần 4
-python3 -I week4/run_week4.py --run-id <run-id> --skip-zap
-```
-
-#### Các bước — ZAP (tùy chọn, chỉ sau Desktop review)
-
-Không chạy runner cũ chỉ với API key. Trước tiên phải tạo/review/export private imported Context có đúng 3 user và 5 Access Rule scope, tạo fingerprint attestation không chứa secret, rồi mount Context read-only và output tạm thời. Quy trình Fish hoàn chỉnh, tên tham số và điều kiện containment nằm tại **mục 3 của `docs/week-4-report.md`**. Nếu không có Context/attestation hợp lệ, runner phải ghi `NOT_RUN` và không gọi scan.
-
-#### Artifact Tuần 4
-- `results/bfla-disposable/<run-id>/execution-receipt.json`
-- `results/bfla-disposable/<run-id>/teardown-receipt.json`
-- `results/week4_bfla_findings.json`
-- `results/zap/zap_run_status.json`
-- `results/week4_comparison_final.json`
-
-#### Kết quả chính
-- BFLA: `DENIED_CONTROL` — non-admin bị từ chối, positive control hoạt động.
-- ZAP: `NOT_RUN`.
-- So sánh hoàn chỉnh: script 2 BOLA + thủ công 2 BOLA + BFLA DENIED_CONTROL.
-
----
-
-## Phần 4. Thực nghiệm, xác minh và đánh giá kết quả
-
-### 4.1. Kết quả authorization read-only
-
-| Nhóm kết quả | Số case | Diễn giải | Xác minh bởi |
-| --- | ---: | --- | --- |
-| Owner control book | 2 | `CONTROL_PASS` | Script |
-| Cross-user user-to-user | 2 | BOLA `CONFIRMED` | Script + Postman |
-| Cross-user admin | 2 | Policy-dependent | Script |
-| Anonymous/invalid-token | 4 | `DENIED` | Script + Postman |
-| Public profile observation | 2 | `OBSERVATION` | Script + Postman |
-| **Tổng** | **12** | | |
-
-Bằng chứng BOLA là equality của trường nhạy cảm `$.secret` giữa response cross-user và fresh owner baseline, không chỉ là HTTP `200`.
-
-Đo thủ công bằng Postman (7 case) tái xác nhận 2 BOLA user-to-user và 2 negative control, khớp hoàn toàn với kết quả script.
-
-### 4.2. Kết quả BFLA trong môi trường disposable
-
-| Control | Kết quả | Diễn giải |
-| --- | ---: | --- |
-| Non-admin xóa protected victim | HTTP 401; victim còn tồn tại | Authorization control hoạt động |
-| Admin xóa delete control | HTTP 200; control không còn | Positive control xác nhận |
-
-**Verdict: `DENIED_CONTROL`** — non-admin bị từ chối. Không xác nhận BFLA.
-
-### 4.3. Kết quả ZAP
-
-Trạng thái evidence hiện tại: `NOT_RUN`. Artifact cũ dừng vì runner cũ đã nhầm node parent cấu trúc trong Site Tree với HTTP request ngoài scope; nó không là finding/negative result. Quy trình thay thế yêu cầu imported Context đã review (3 user + Access Rules), fingerprint attestation private và containment từ paginated HTTP history thực tế; chỉ sau run mới qua toàn bộ gate mới có thể ghi `COMPLETED`.
-
-### 4.4. Bảng so sánh tổng hợp
-
-| Tiêu chí | Script tự phát triển | Thủ công Postman | OWASP ZAP | BFLA disposable |
+| Tiêu chí | Script tự phát triển | Thủ công (Postman) | OWASP ZAP | BFLA disposable |
 | --- | --- | --- | --- | --- |
-| Trạng thái | MEASURED | COMPLETED_NO_TIMING | NOT_RUN | EXECUTED |
-| Số case | 12 | 7 | 0 | 2 |
-| BOLA confirmed | 2 | 2 | — | N/A |
-| BFLA verdict | N/A | N/A | — | DENIED_CONTROL |
-| Thời gian | ~2032 ms | Không đo | — | N/A |
-| Phát hiện data leak | Có (`$.secret`) | Có (đọc body) | — | N/A |
+| Xác nhận đúng 2 BOLA user-to-user | Có — owner-baseline | Có — độc lập (M-02, M-03) | Không — actor mapping lệch | N/A |
+| Phát hiện rò rỉ ẩn sau `200 OK` | Có — so sánh `$.secret` trực tiếp | Có — quan sát response có chủ đích | Chỉ đánh giá rule Allow/Deny; không so sánh nội dung | N/A |
+| Effort cấu hình | Trung bình: viết một lần, tái sử dụng | Thấp mỗi case, nhưng không scale | Rất cao: Context, auth, quiescence, seed và report-write phải khớp | Trung bình: fixture disposable và guardrail riêng |
+| Thời gian | 1990.362 ms / 12 case | Không đo stopwatch | Vài giờ công cấu hình; assessment chạy trong vài giây | N/A |
+| Khả năng tái sử dụng | Cao — đổi spec/role/ownership | Thấp — thực hiện lại thủ công | Trung bình — Context cần review lại khi đổi fixture | Guardrail tái dùng được; fixture phải tạo mới |
 
----
+### 4.2. Luận điểm trung tâm được củng cố mạnh hơn dự kiến
 
-## Phần 5. Thảo luận, giới hạn và kết luận
+Quá trình vận hành ZAP trong Tuần 4 cho thấy kiểm thử authorization logic không phải là một scanner “bấm nút là xong”. Session management phải phản ánh đúng cơ chế header-based của ứng dụng; API response contract thực tế của `core.accessUrl` và `writeHTMLreport` khác generic acknowledgement giả định ban đầu; còn kết quả cuối cùng phải được đọc ở cấp actor×resource thay vì chỉ đếm endpoint bị gắn cờ.
 
-### 5.1. Kết luận trong phạm vi thí nghiệm
+Ngay cả khi scan có containment đầy đủ, một công cụ rule-based vẫn chỉ mạnh bằng Context, authentication state, Access Rules và cách người vận hành diễn giải output của nó. Kết quả owner-book và `/me` `ILLEGAL` minh họa rằng scanner có thể tạo actor-level signal không khớp bản chất logic flaw cần tìm. Vì vậy, script owner-baseline và xác minh thủ công vẫn cần thiết để chứng minh data disclosure thực tế.
 
-Trong phạm vi VAmPI local được ủy quyền, quy trình xác minh độc lập xác nhận hai trường hợp BOLA user-to-user tại endpoint book-object. Kết luận này được xác nhận bởi **cả hai phương pháp**: script tự động (fresh baseline sensitive-field comparison) và kiểm tra thủ công Postman (đọc response body trực tiếp).
+### 4.3. Giới hạn
 
-Thử nghiệm BFLA tách biệt đã xác nhận control từ chối đối với non-admin trong môi trường disposable; không có finding BFLA đã được xác nhận.
+- ZAP Access Control không thay thế được owner-baseline confirmation: nó chỉ bổ sung evidence về rule alignment; ba `/me` discrepancy và hai owner-book discrepancy chưa được điều tra đến nguyên nhân gốc rễ.
+- Đo thủ công thiếu số liệu thời gian định lượng.
+- Ownership map vẫn được xây dựng thủ công; OpenAPI có thể thiếu security declaration như hướng cải thiện của Barabanov và Dergunov (2022).
+- BFLA mới phủ một action `DELETE` trên một fixture disposable.
+- Các tổng số giữa 12 automated case, 7 manual case, 15 ZAP row và 2 BFLA control không phải các sample hoàn toàn hoán đổi cho nhau.
 
-ZAP Access Control evidence hiện giữ `NOT_RUN`: runner cũ không có verified imported Context/API lifecycle đúng. Quy trình mới dùng Context đã review và HTTP-history containment; chưa có real-scan artifact mới nên không suy diễn kết quả scanner.
+### 4.4. Hướng tiếp theo
 
-### 5.2. Giá trị và giới hạn
-
-**Giá trị:**
-- Kết hợp OpenAPI inventory, ownership fixture có provenance, control case, và sensitive baseline comparison.
-- BFLA được cô lập bằng target/volume/project disposable.
-- Guardrail defense-in-depth chặn fixture username ở nhiều tầng.
-- Kết quả BOLA được xác nhận bởi hai phương pháp độc lập.
-
-**Giới hạn:**
-- Ownership map cung cấp thủ công; chỉ hai book fixture cho BOLA.
-- OpenAPI không thay thế authorization policy.
-- BFLA chỉ phủ một actor, hai target và một operation.
-- Thời gian đo thủ công bỏ qua (chỉ phục vụ so sánh phương pháp).
-- ZAP Access Control scan chưa chạy thành công.
-
-### 5.3. Khuyến nghị
-
-1. **Remediation BOLA:** ràng buộc truy vấn book với authenticated subject; trả denial/hidden response cho non-owner.
-2. **Admin policy:** chỉ nâng thành finding khi policy xác nhận admin bị cấm bypass ownership.
-3. **ZAP tương lai:** cần cơ chế kiểm chứng scan queue trước scan; cấu hình user/authentication/rules đầy đủ.
-4. **Mở rộng BFLA:** manifest mới, fixture disposable mới, target độc lập; không nới điều kiện runner Week 2/3.
-
----
+1. Review thủ công Access Rule mapping trong ZAP Context để xác định vì sao owner access và `/me` bị gắn sai hướng; đây có thể là lỗi cấu hình Allow/Deny hoặc giới hạn đánh giá self-identity của add-on.
+2. Bán tự động hóa ownership map theo hướng Le và cộng sự (2022), đồng thời vẫn yêu cầu review provenance trước khi test.
+3. Mở rộng đánh giá sang kiến trúc multi-service thực tế như crAPI theo hướng Zhang và cộng sự (2024).
+4. Nếu so sánh hiệu quả thao tác là yêu cầu, thực hiện lại Postman với stopwatch độc lập thay vì suy diễn từ runtime của script.
 
 ## Tài liệu tham khảo
 

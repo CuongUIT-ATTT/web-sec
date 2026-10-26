@@ -147,6 +147,12 @@ def build_week4_comparison(
             "finding_count": None,
             "reason": zap_report.get("reason", "Unknown reason."),
         }
+    elif zap_report.get("status") == "BOOTSTRAP_REQUIRES_OPERATOR_AUTH_AND_QUIESCE":
+        zap_data = {
+            "status": "NOT_RUN",
+            "finding_count": None,
+            "reason": "ZAP Desktop authentication bootstrap is pending operator authentication and traffic quiescence; no scan was run.",
+        }
     else:
         zap_data = {
             "status": zap_report.get("status", "COMPLETED"),

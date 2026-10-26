@@ -12,6 +12,9 @@ import hashlib
 import json
 import re
 import stat
+import time
+from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -27,7 +30,19 @@ FORBIDDEN_PATHS = frozenset({"/createdb"})
 ALLOWED_METHODS = frozenset({"GET"})
 MESSAGE_PAGE_SIZE = 100
 MAX_MESSAGES = 1_000
+QUIESCENCE_REQUIRED_READS = 2
+QUIESCENCE_INTERVAL_SECONDS = 1
+QUIESCENCE_TIMEOUT_SECONDS = 10
 REQUIRED_ROLE_NAMES = frozenset({"admin", "userA", "userB"})
+MESSAGE_ID_PATTERN = re.compile(r"^[1-9][0-9]*$")
+REVIEWER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,79}$")
+
+
+@dataclass(frozen=True)
+class HistorySnapshot:
+    """Private, in-memory view of one stable target-history read."""
+
+    message_classes: dict[str, str | None]
 
 
 class ZapContextError(ValueError):
@@ -94,6 +109,17 @@ def allowed_urls(manifest: dict[str, Any]) -> set[str]:
     return {f"{TARGET_BASE}{path}" for path in allowed_paths(manifest)}
 
 
+def _expected_rule_matrix(manifest: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Return the human-reviewed rule policy bound to the request manifest."""
+    matrix: dict[str, dict[str, str]] = {}
+    for request in manifest["allowed_requests"]:
+        expectations = request.get("authorization_expectations")
+        if not isinstance(expectations, dict):
+            raise ZapContextError("ZAP allowlist has malformed authorization expectations.")
+        matrix[request["path"]] = expectations
+    return matrix
+
+
 def _assert_private_file(path: str | Path, label: str) -> Path:
     source = Path(path)
     if not source.is_file():
@@ -141,24 +167,39 @@ def load_context_attestation(
         raise ZapContextError("Context attestation target is not the approved local origin.")
     if attestation["context_name"] != manifest.get("context_name"):
         raise ZapContextError("Context attestation name does not match the allowlist.")
-    if not isinstance(attestation["context_sha256"], str) or len(attestation["context_sha256"]) != 64:
+    fingerprint = attestation["context_sha256"]
+    if not isinstance(fingerprint, str) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
         raise ZapContextError("Context attestation has an invalid SHA-256 fingerprint.")
-    if attestation["context_sha256"] != context_sha256(context_path):
+    if fingerprint != context_sha256(context_path):
         raise ZapContextError("Imported Context fingerprint does not match its attestation.")
     reviewed_users = attestation["reviewed_users"]
-    if not isinstance(reviewed_users, list) or set(reviewed_users) != REQUIRED_ROLE_NAMES:
+    if (
+        not isinstance(reviewed_users, list)
+        or len(reviewed_users) != len(REQUIRED_ROLE_NAMES)
+        or set(reviewed_users) != REQUIRED_ROLE_NAMES
+    ):
         raise ZapContextError("Context attestation must review exactly admin, userA, and userB.")
     reviewed_paths = attestation["reviewed_paths"]
-    if not isinstance(reviewed_paths, list) or set(reviewed_paths) != allowed_paths(manifest):
+    if (
+        not isinstance(reviewed_paths, list)
+        or len(reviewed_paths) != len(allowed_paths(manifest))
+        or set(reviewed_paths) != allowed_paths(manifest)
+    ):
         raise ZapContextError("Context attestation paths do not match the exact allowlist.")
     expectations = attestation["access_rule_expectations"]
-    if not isinstance(expectations, dict) or set(expectations) != allowed_paths(manifest):
-        raise ZapContextError("Context attestation must cover every reviewed path.")
-    for path_value, per_user in expectations.items():
-        if not isinstance(per_user, dict) or set(per_user) != REQUIRED_ROLE_NAMES:
-            raise ZapContextError(f"Context rule attestation is incomplete for {path_value}.")
-        if any(value not in {"allowed", "denied", "policy-dependent"} for value in per_user.values()):
-            raise ZapContextError("Context rule attestation contains an invalid expectation.")
+    if expectations != _expected_rule_matrix(manifest):
+        raise ZapContextError("Context rule attestation does not match the reviewed allowlist policy.")
+    reviewed_on = attestation["reviewed_on"]
+    if not isinstance(reviewed_on, str):
+        raise ZapContextError("Context attestation has invalid review metadata.")
+    try:
+        if date.fromisoformat(reviewed_on) > date.today():
+            raise ZapContextError("Context attestation has invalid review metadata.")
+    except ValueError as error:
+        raise ZapContextError("Context attestation has invalid review metadata.") from error
+    reviewer = attestation["reviewer"]
+    if not isinstance(reviewer, str) or not REVIEWER_PATTERN.fullmatch(reviewer):
+        raise ZapContextError("Context attestation has invalid review metadata.")
     return attestation
 
 
@@ -176,10 +217,48 @@ def import_reviewed_context(api_key: str, zap_context_path: str) -> str:
 
 
 def _expected_include_patterns(manifest: dict[str, Any]) -> set[str]:
+    """Return ZAP's canonical exact-path regex spelling for each reviewed URL."""
     return {
-        f"{re.escape(TARGET_BASE)}{re.escape(path)}$"
+        f"{re.escape(TARGET_BASE)}{re.escape(path)}$".replace(r"\-", "-")
         for path in allowed_paths(manifest)
     }
+
+
+def _loaded_context_metadata(api_key: str, context_name: str) -> dict[str, str]:
+    """Read one exact Context by its reviewed name without changing ZAP state."""
+    result = _zap_api(
+        "context", "view", "context", {"contextName": context_name}, api_key=api_key
+    )
+    context = result.get("context")
+    if not isinstance(context, dict):
+        raise ZapContextError("ZAP did not return Context metadata.")
+    context_id = context.get("id")
+    if not isinstance(context_id, (str, int)) or not str(context_id):
+        raise ZapContextError("ZAP Context metadata has no usable ID.")
+    if context.get("name") != context_name:
+        raise ZapContextError("ZAP Context name does not match its attestation.")
+    return {"id": str(context_id), "name": context_name}
+
+
+def _verify_context_include_regexes(
+    api_key: str,
+    manifest: dict[str, Any],
+    context_name: str,
+) -> int:
+    """Require the exact reviewed include patterns without modifying the Context."""
+    include_result = _zap_api(
+        "context", "view", "includeRegexs", {"contextName": context_name}, api_key=api_key
+    )
+    include_regexs = include_result.get("includeRegexs")
+    expected_patterns = _expected_include_patterns(manifest)
+    if (
+        not isinstance(include_regexs, list)
+        or not all(isinstance(pattern, str) for pattern in include_regexs)
+        or len(include_regexs) != len(expected_patterns)
+        or set(include_regexs) != expected_patterns
+    ):
+        raise ZapContextError("ZAP Context include regexes are not exactly the reviewed paths.")
+    return len(include_regexs)
 
 
 def verify_imported_context(
@@ -188,22 +267,25 @@ def verify_imported_context(
     manifest: dict[str, Any],
     attestation: dict[str, Any],
 ) -> dict[str, Any]:
-    """Verify the imported Context’s name and exact include regexes."""
-    result = _zap_api("context", "view", "context", {"contextId": context_id}, api_key=api_key)
-    context = result.get("context")
-    if not isinstance(context, dict):
-        raise ZapContextError("ZAP did not return Context metadata.")
-    if str(context.get("id")) != str(context_id):
+    """Verify the just-imported Context’s identity and exact include regexes."""
+    context_name = attestation["context_name"]
+    context = _loaded_context_metadata(api_key, context_name)
+    if context["id"] != str(context_id):
         raise ZapContextError("Imported Context ID cannot be verified.")
-    if context.get("name") != attestation["context_name"]:
-        raise ZapContextError("Imported Context name does not match its attestation.")
-    include_result = _zap_api(
-        "context", "view", "includeRegexs", {"contextName": attestation["context_name"]}, api_key=api_key
-    )
-    include_regexs = include_result.get("includeRegexs")
-    if not isinstance(include_regexs, list) or set(include_regexs) != _expected_include_patterns(manifest):
-        raise ZapContextError("Imported Context include regexes are not exactly the reviewed paths.")
-    return {"context_id": str(context_id), "context_name": attestation["context_name"], "include_count": len(include_regexs)}
+    include_count = _verify_context_include_regexes(api_key, manifest, context_name)
+    return {"context_id": str(context_id), "context_name": context_name, "include_count": include_count}
+
+
+def verify_preloaded_context(
+    api_key: str,
+    manifest: dict[str, Any],
+    attestation: dict[str, Any],
+) -> dict[str, Any]:
+    """Verify one already-loaded Desktop Context using only reviewed metadata."""
+    context_name = attestation["context_name"]
+    context = _loaded_context_metadata(api_key, context_name)
+    include_count = _verify_context_include_regexes(api_key, manifest, context_name)
+    return {"context_id": context["id"], "context_name": context_name, "include_count": include_count}
 
 
 def _normalise_user(raw_user: Any) -> dict[str, str]:
@@ -222,7 +304,7 @@ def _normalise_user(raw_user: Any) -> dict[str, str]:
 def verify_imported_users(api_key: str, context_id: str, attestation: dict[str, Any]) -> list[dict[str, str]]:
     """Verify exactly the reviewed enabled users without requesting credentials."""
     result = _zap_api("users", "view", "usersList", {"contextId": context_id}, api_key=api_key)
-    raw_users = result.get("users")
+    raw_users = result.get("usersList")
     if not isinstance(raw_users, list):
         raise ZapContextError("ZAP did not return a user list.")
     users = [_normalise_user(user) for user in raw_users]
@@ -234,10 +316,43 @@ def verify_imported_users(api_key: str, context_id: str, attestation: dict[str, 
     return sorted(users, key=lambda user: user["name"])
 
 
+_DESKTOP_AUTHENTICATION_STATE_KEYS = frozenset({
+    "lastAuthFailure",
+    "lastAuthHistoryId",
+    "lastPollResult",
+    "lastPollTimeInMs",
+    "lastSuccessfulAuthTimeInMs",
+    "requestsSinceLastPoll",
+})
+
+
+def _has_successful_authentication_state(result: Any) -> bool:
+    """Accept only the reviewed successful response shapes from ZAP.
+
+    ZAP installations expose the state either through the legacy
+    ``authenticationState`` object or directly at the JSON response root. The
+    strict shape check prevents unrelated or partial JSON from being mistaken
+    for current authentication evidence.
+    """
+    if not isinstance(result, dict):
+        return False
+    if set(result) == {"authenticationState"}:
+        state = result["authenticationState"]
+        return (
+            isinstance(state, dict)
+            and set(state) == {"lastPollResult"}
+            and state["lastPollResult"] in {True, "true"}
+        )
+    return (
+        set(result) == _DESKTOP_AUTHENTICATION_STATE_KEYS
+        and result["lastPollResult"] in {True, "true"}
+    )
+
+
 def verify_user_authentication_state(api_key: str, context_id: str, users: list[dict[str, str]]) -> list[dict[str, str]]:
     """Require ZAP to report an authenticated state for every reviewed user.
 
-    This reads only the boolean authentication state; it neither performs login
+    This reads only the current polling result; it neither performs login
     requests nor exposes session/header data.
     """
     states: list[dict[str, str]] = []
@@ -246,8 +361,7 @@ def verify_user_authentication_state(api_key: str, context_id: str, users: list[
             "users", "view", "getAuthenticationState",
             {"contextId": context_id, "userId": user["id"]}, api_key=api_key,
         )
-        state = result.get("authenticationState")
-        if state not in {True, "true", "True", "TRUE", "authenticated", "AUTHENTICATED"}:
+        if not _has_successful_authentication_state(result):
             raise ZapContextError("A reviewed ZAP user is not authenticated.")
         states.append({"name": user["name"], "state": "authenticated"})
     return states
@@ -297,27 +411,96 @@ def _message_count(api_key: str) -> int:
     return count
 
 
+def wait_for_history_quiescence(
+    api_key: str,
+    *,
+    timeout: int = QUIESCENCE_TIMEOUT_SECONDS,
+    interval: int = QUIESCENCE_INTERVAL_SECONDS,
+) -> dict[str, int]:
+    """Require two stable target-history counts before capturing a baseline.
+
+    This uses only ZAP's target-filtered Core count endpoint and sends no
+    request to VAmPI. Counts and message identities remain private; the
+    returned summary describes only the fixed observation policy.
+    """
+    if timeout < interval or interval <= 0:
+        raise ZapContextError("ZAP history quiescence configuration is invalid.")
+    deadline = time.monotonic() + timeout
+    previous_count = _message_count(api_key)
+    while True:
+        if time.monotonic() + interval > deadline:
+            raise ZapContextError("ZAP target history did not quiesce before the safe timeout.")
+        time.sleep(interval)
+        current_count = _message_count(api_key)
+        if current_count == previous_count:
+            return {
+                "required_stable_reads": QUIESCENCE_REQUIRED_READS,
+                "observation_interval_seconds": interval,
+                "timeout_seconds": timeout,
+            }
+        previous_count = current_count
+
+
 def get_messages_in_scope(api_key: str) -> list[dict[str, Any]]:
     """Retrieve the entire bounded target history using documented pagination."""
     total = _message_count(api_key)
     messages: list[dict[str, Any]] = []
     for start in range(0, total, MESSAGE_PAGE_SIZE):
+        expected = min(MESSAGE_PAGE_SIZE, total - start)
         result = _zap_api(
             "core", "view", "messages",
-            {"baseurl": TARGET_BASE, "start": str(start), "count": str(min(MESSAGE_PAGE_SIZE, total - start))},
+            {"baseurl": TARGET_BASE, "start": str(start), "count": str(expected)},
             api_key=api_key,
         )
         page = result.get("messages")
-        if not isinstance(page, list):
-            raise ZapContextError("ZAP returned an invalid message page.")
-        if not page or len(page) > min(MESSAGE_PAGE_SIZE, total - start):
+        if not isinstance(page, list) or len(page) != expected:
             raise ZapContextError("ZAP history pagination is incomplete.")
         if not all(isinstance(message, dict) for message in page):
             raise ZapContextError("ZAP returned malformed message metadata.")
         messages.extend(page)
-    if len(messages) != total:
-        raise ZapContextError("ZAP history pagination did not return every message.")
+    if len(messages) != total or _message_count(api_key) != total:
+        raise ZapContextError("ZAP target history changed during pagination.")
     return messages
+
+
+def _message_id(message: dict[str, Any]) -> str:
+    """Return a strict private identity for correlating one ZAP history record."""
+    value = message.get("id")
+    if isinstance(value, int) and not isinstance(value, bool):
+        value = str(value)
+    if not isinstance(value, str) or not MESSAGE_ID_PATTERN.fullmatch(value):
+        raise ZapContextError("ZAP history contains an invalid message identity.")
+    return value
+
+
+def _approved_path_from_header(header: Any, manifest: dict[str, Any]) -> str | None:
+    """Return an approved canonical path only when the request is exact."""
+    if _classify_request_header(header, manifest) is not None:
+        return None
+    target = header.split("\r\n", 1)[0].split(" ", 2)[1]
+    return urlsplit(target).path
+
+
+def _capture_history_once(api_key: str, manifest: dict[str, Any]) -> HistorySnapshot:
+    """Create an in-memory classified target-history snapshot without exporting it."""
+    message_classes: dict[str, str | None] = {}
+    for message in get_messages_in_scope(api_key):
+        message_id = _message_id(message)
+        if message_id in message_classes:
+            raise ZapContextError("ZAP history contains duplicate message identities.")
+        header = message.get("requestHeader")
+        violation = _classify_request_header(header, manifest)
+        message_classes[message_id] = violation or _approved_path_from_header(header, manifest)
+    return HistorySnapshot(message_classes=message_classes)
+
+
+def capture_history_snapshot(api_key: str, manifest: dict[str, Any]) -> HistorySnapshot:
+    """Capture a stable target-history view using two identical identity reads."""
+    first = _capture_history_once(api_key, manifest)
+    second = _capture_history_once(api_key, manifest)
+    if first.message_classes != second.message_classes:
+        raise ZapContextError("ZAP target history did not remain stable while capturing a snapshot.")
+    return first
 
 
 def _classify_request_header(header: Any, manifest: dict[str, Any]) -> str | None:
@@ -351,47 +534,101 @@ def _classify_request_header(header: Any, manifest: dict[str, Any]) -> str | Non
     return None
 
 
+def _is_access_url_seed_response(result: Any) -> bool:
+    """Accept only ZAP Core's opaque non-null ``accessUrl`` envelope.
+
+    The nested value can include raw request/response data, so it must never be
+    inspected, retained, logged, or exported. The exact post-seed history delta
+    remains the authoritative containment proof.
+    """
+    return (
+        isinstance(result, dict)
+        and set(result) == {"accessUrl"}
+        and result["accessUrl"] is not None
+    )
+
+
 def seed_reviewed_paths(api_key: str, manifest: dict[str, Any]) -> dict[str, int]:
-    """Add exactly the reviewed GET nodes to a fresh ZAP Site Tree.
+    """Add exactly the reviewed GET nodes after the private auth-history baseline.
 
     ``core.accessUrl`` is intentionally called once for each absolute
-    allowlisted URL. The fresh-history gate in the runner plus later paginated
-    history validation ensures this cannot turn into endpoint discovery.
+    allowlisted URL. It returns an opaque request/response envelope; only its
+    non-null wrapper value is validated. The later strict history-delta gate proves
+    this cannot turn into endpoint discovery or an incomplete seed delta.
     """
     seeded = 0
     for path in sorted(allowed_paths(manifest)):
         result = _zap_api(
             "core", "action", "accessUrl", {"url": f"{TARGET_BASE}{path}"}, api_key=api_key
         )
-        if result.get("Result") != "OK":
-            raise ZapContextError("ZAP did not confirm a reviewed GET seed request.")
+        if not _is_access_url_seed_response(result):
+            raise ZapContextError("ZAP did not return a reviewed GET seed response.")
         seeded += 1
     return {"seeded_request_count": seeded}
 
 
-def verify_message_containment(
-    api_key: str,
-    manifest: dict[str, Any],
-    *,
-    expected_count: int | None = None,
-) -> tuple[bool, dict[str, Any]]:
-    """Fail closed unless every actual local-target message is an approved GET.
+def history_baseline_summary(snapshot: HistorySnapshot) -> dict[str, int]:
+    """Return bounded provenance for a private post-auth history boundary."""
+    return {"message_count": len(snapshot.message_classes)}
 
-    ``expected_count`` is used for the fresh-session baseline and exact seed
-    phase. The returned diagnostic deliberately contains counts and bounded
-    reason codes only; it never exposes headers, request targets, query values,
-    or bodies.
-    """
+
+def _delta_classes(previous: HistorySnapshot, current: HistorySnapshot) -> dict[str, str | None]:
+    """Return only new records after proving the current view extends the prior one."""
+    previous_ids = set(previous.message_classes)
+    current_ids = set(current.message_classes)
+    if not previous_ids <= current_ids:
+        raise ZapContextError("ZAP target history lost a prior message identity.")
+    if any(current.message_classes[message_id] != classification for message_id, classification in previous.message_classes.items()):
+        raise ZapContextError("ZAP target history changed a prior message classification.")
+    return {
+        message_id: classification
+        for message_id, classification in current.message_classes.items()
+        if message_id not in previous_ids
+    }
+
+
+def _delta_summary(
+    previous: HistorySnapshot,
+    current: HistorySnapshot,
+    manifest: dict[str, Any],
+) -> tuple[bool, dict[str, Any]]:
+    """Classify a successor delta without persisting source records or identities."""
+    allowed = allowed_paths(manifest)
+    path_counts = {path: 0 for path in sorted(allowed)}
     violations: dict[str, int] = {}
-    message_count = 0
-    for message in get_messages_in_scope(api_key):
-        message_count += 1
-        violation = _classify_request_header(message.get("requestHeader"), manifest)
-        if violation:
+    delta = _delta_classes(previous, current)
+    for classification in delta.values():
+        if classification in allowed:
+            path_counts[classification] += 1
+        else:
+            violation = classification or "missing_request_header"
             violations[violation] = violations.get(violation, 0) + 1
-    if expected_count is not None and message_count != expected_count:
-        violations["unexpected_message_count"] = abs(message_count - expected_count) or 1
     return not violations, {
-        "message_count": message_count,
+        "baseline_message_count": len(previous.message_classes),
+        "new_message_count": len(delta),
+        "approved_path_counts": path_counts,
         "violation_counts": violations,
     }
+
+
+def verify_history_delta(
+    previous: HistorySnapshot,
+    current: HistorySnapshot,
+    manifest: dict[str, Any],
+) -> tuple[bool, dict[str, Any]]:
+    """Require all traffic introduced after a private baseline to be approved GETs."""
+    return _delta_summary(previous, current, manifest)
+
+
+def verify_seed_delta(
+    previous: HistorySnapshot,
+    current: HistorySnapshot,
+    manifest: dict[str, Any],
+) -> tuple[bool, dict[str, Any]]:
+    """Require exactly one newly observed approved GET for every reviewed path."""
+    contained, summary = _delta_summary(previous, current, manifest)
+    if summary["approved_path_counts"] != {path: 1 for path in sorted(allowed_paths(manifest))}:
+        violations = summary["violation_counts"]
+        violations["unexpected_seed_path_count"] = 1
+        contained = False
+    return contained, summary

@@ -51,7 +51,7 @@ python3 -m venv .venv
 ### 2.4. Chạy pipeline xác minh độc lập
 
 ```bash
-python3 -I week3/run_week3.py
+.venv/bin/python -I week3/run_week3.py
 ```
 
 Pipeline sẽ:
@@ -87,8 +87,10 @@ Pipeline sẽ:
 
 ### 2.6. Chạy unit test
 
+Sau khi cài package vào `.venv`, dùng interpreter của môi trường đó. `-I` loại source checkout khỏi `sys.path`, do đó system `python3 -I` không import các package đã đóng gói từ thư mục project.
+
 ```bash
-python3 -I -m unittest discover -s tests -v
+.venv/bin/python -I -m unittest discover -s tests -v
 ```
 
 ## 3. Quy trình xác minh độc lập (script)
@@ -226,9 +228,9 @@ Artifact lịch sử: `results/zap/zap_run_status.json` ghi `NOT_RUN`. Lần th�
 ## 11. Kiểm thử kỹ thuật
 
 ```bash
-python3 -I -m unittest discover -s tests -v
+.venv/bin/python -I -m unittest discover -s tests -v
 ```
 
-Kết quả cập nhật ngày 23/10/2026: **91 tests passed**.
+Kết quả tại mốc hoàn thành Tuần 3, trước các bổ sung BFLA/ZAP của Tuần 4: **19 tests passed**. Các lần regression sau đó thuộc các giai đoạn sau và không phải evidence Tuần 3.
 
 Không có Bearer token hoặc JWT signature trong artifact Tuần 3.

@@ -107,6 +107,15 @@ class BuildWeek4ComparisonTests(unittest.TestCase):
         self.assertEqual(comparison["owasp_zap"]["status"], "NOT_RUN")
         self.assertIn("containment", comparison["owasp_zap"]["reason"])
 
+    def test_bootstrap_requires_authentication_and_quiescence(self):
+        comparison = build_week4_comparison(
+            bfla_findings=None,
+            zap_report={"status": "BOOTSTRAP_REQUIRES_OPERATOR_AUTH_AND_QUIESCE"},
+        )
+        zap = comparison["owasp_zap"]
+        self.assertEqual(zap["status"], "NOT_RUN")
+        self.assertIn("authentication and traffic quiescence", zap["reason"])
+
     def test_incorporates_zap_completed(self):
         zap = {
             "status": "COMPLETED",

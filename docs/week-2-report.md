@@ -50,7 +50,7 @@ Không thực hiện kiểm thử trên hệ thống bên thứ ba, môi trườ
 Không sử dụng thư viện HTTP bên thứ ba. Pipeline chạy isolated mode:
 
 ```bash
-python3 -I week2/main.py --base-url http://127.0.0.1:5000
+.venv/bin/python -I week2/main.py --base-url http://127.0.0.1:5000
 ```
 
 ## 4. Input và endpoint inventory
@@ -93,7 +93,7 @@ Preflight đã thành công trước khi chạy: lab xác nhận `vulnerable=1`,
 Lệnh chạy:
 
 ```bash
-python3 -I week2/main.py --base-url http://127.0.0.1:5000
+.venv/bin/python -I week2/main.py --base-url http://127.0.0.1:5000
 ```
 
 Tóm tắt pipeline:
@@ -176,13 +176,13 @@ Tất cả artifact JSON đã được parse lại để xác minh hợp lệ. K
 
 ## 10. Verification kỹ thuật
 
-Unit test không gọi Docker/API:
+Unit test không gọi Docker/API. Sau khi cài package vào virtual environment, chạy qua interpreter của môi trường đó; `-I` cố ý loại checkout khỏi `sys.path`, nên system `python3 -I` không import package từ source tree:
 
 ```bash
-python3 -I -m unittest discover -s tests -v
+.venv/bin/python -I -m unittest discover -s tests -v
 ```
 
-Kết quả: **13 tests passed**.
+Kết quả lịch sử tại thời điểm Tuần 2: **13 tests passed**.
 
 Các test bao phủ:
 
@@ -197,7 +197,7 @@ Các test bao phủ:
 Pipeline cũng được kiểm tra bằng base URL không hợp lệ:
 
 ```bash
-python3 -I week2/main.py --base-url http://localhost:5000
+.venv/bin/python -I week2/main.py --base-url http://localhost:5000
 ```
 
 Kết quả: pipeline dừng an toàn và từ chối target vì URL không đúng `http://127.0.0.1:5000`.
