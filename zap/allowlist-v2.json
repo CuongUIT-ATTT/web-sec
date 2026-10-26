@@ -71,11 +71,12 @@
     "non-loopback-targets"
   ],
   "execution_requirements": [
-    "Use a fresh ZAP session bound only to 127.0.0.1:8080.",
+    "Use a dedicated fresh ZAP session bound only to 127.0.0.1:8080; authenticated bootstrap messages may remain in Core history.",
     "Import a manually reviewed local Context that contains exactly three enabled users: admin, userA, and userB.",
     "The local Context and any authentication material are private mode-0600 files and must not be committed or copied into results.",
     "The Context include regexes must match only these five absolute GET paths; Access Rules must be reviewed in ZAP Desktop before export.",
     "Validate the Context against a non-secret fingerprint attestation before the scan.",
+    "After verified user authentication and before baseline capture, require two equal target-scoped Core message counts one second apart; retry for at most ten seconds and stop NOT_RUN before seed or scan on timeout.",
     "Use only the Access Control add-on; do not spider, AJAX-spider, active-scan, fuzz, enumerate, or import the full OpenAPI specification.",
     "Do not export Authorization headers, bearer tokens, credentials, request/response bodies, raw API errors, or raw ZAP HTML."
   ],
@@ -83,8 +84,12 @@
     "authoritative_evidence": "Actual target HTTP messages returned by the paginated ZAP history API.",
     "permitted_message": "GET to exactly http://127.0.0.1:5000 plus one listed path, with no query or fragment.",
     "site_tree": "Bare origin and path-parent nodes are structural diagnostics only. They neither authorize nor block a scan.",
+    "post_auth_quiescence": "Before the private baseline, two target-scoped Core message counts must be equal one second apart. Changed counts retry for at most ten seconds; timeout stops NOT_RUN before seed or scan.",
+    "post_auth_baseline": "Authentication and verification-poll traffic is captured only as an in-memory Core-history identity baseline after quiescence. It is never exported and is not assessment traffic.",
+    "assessment_delta": "The seed delta must contain exactly one approved GET per declared path; every scan delta message must be an approved GET to a declared path.",
     "block_conditions": [
       "Any malformed request line or unavailable paginated history page.",
+      "Post-auth target-history quiescence timeout or invalid target-scoped Core message count.",
       "Any non-GET method, query, fragment, foreign scheme/host/port, unapproved path, or /createdb request.",
       "Any unverified Context, user, authentication state, or reviewed rule attestation."
     ]

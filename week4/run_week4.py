@@ -2,7 +2,7 @@
 
 Usage::
 
-    python3 -I week4/run_week4.py --run-id <id>
+    .venv/bin/python -I week4/run_week4.py --run-id <id>
 
 This script coordinates the Week 4 deliverables:
 1. BFLA findings from an already-completed disposable run
@@ -52,6 +52,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip the ZAP scan (use when ZAP is not running).",
     )
     parser.add_argument(
+        "--zap-bootstrap-only",
+        action="store_true",
+        help="Read-only Desktop readiness check before the operator authenticates and quiesces traffic; never seeds or scans.",
+    )
+    parser.add_argument(
         "--zap-api-key",
         default="",
         help="ZAP API key (empty for development mode).",
@@ -62,12 +67,18 @@ def main(argv: list[str] | None = None) -> int:
         help="ZAP allowlist manifest path.",
     )
     parser.add_argument(
+        "--zap-context-mode",
+        choices=("import", "preloaded-desktop"),
+        default="import",
+        help="Context source: Docker import (default) or an already-loaded local ZAP Desktop Context.",
+    )
+    parser.add_argument(
         "--zap-context",
-        help="Local private reviewed .context file (required unless --skip-zap).",
+        help="Local private reviewed .context file used for fingerprint attestation (required unless --skip-zap).",
     )
     parser.add_argument(
         "--zap-context-in-container",
-        help="Absolute path of that Context as mounted inside the ZAP container.",
+        help="Absolute Context path visible to ZAP; required only with --zap-context-mode import.",
     )
     parser.add_argument(
         "--zap-attestation",
@@ -80,10 +91,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--zap-html-in-container",
-        help="Absolute mounted temporary HTML-report path inside the ZAP container.",
+        help="Absolute temporary HTML-report path visible to the ZAP process.",
     )
 
     args = parser.parse_args(argv)
+    if args.skip_zap and args.zap_bootstrap_only:
+        parser.error("--skip-zap cannot be combined with --zap-bootstrap-only")
+    if args.zap_bootstrap_only and args.zap_context_mode != "preloaded-desktop":
+        parser.error("--zap-bootstrap-only requires --zap-context-mode preloaded-desktop")
 
     # ── Phase 1: BFLA findings ──
     print(f"[Week 4] Building BFLA findings from run {args.run_id}...")
@@ -102,6 +117,23 @@ def main(argv: list[str] | None = None) -> int:
     zap_report = None
     if args.skip_zap:
         print("[Week 4] ZAP scan skipped (--skip-zap).")
+    elif args.zap_bootstrap_only:
+        print("[Week 4] Verifying ZAP Desktop authentication bootstrap...")
+        try:
+            from week4.zap_runner import run_zap_authentication_bootstrap
+
+            zap_report = run_zap_authentication_bootstrap(
+                api_key=args.zap_api_key,
+                context_mode=args.zap_context_mode,
+                allowlist_path=args.allowlist,
+                context_path=args.zap_context,
+                context_attestation_path=args.zap_attestation,
+                bootstrap_path=Path(args.results_root) / "zap" / "zap_bootstrap_readiness.json",
+            )
+            print(f"  ZAP bootstrap: {zap_report.get('status', 'UNKNOWN')}")
+        except Exception as error:
+            print(f"  ZAP bootstrap error: {error}", file=sys.stderr)
+            zap_report = None
     else:
         print("[Week 4] Running ZAP Access Control scan...")
         try:
@@ -109,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
 
             zap_report = run_zap_access_control(
                 api_key=args.zap_api_key,
+                context_mode=args.zap_context_mode,
                 allowlist_path=args.allowlist,
                 context_path=args.zap_context,
                 zap_context_path=args.zap_context_in_container,

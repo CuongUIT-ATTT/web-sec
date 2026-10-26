@@ -1,5 +1,9 @@
 # Local VAmPI lab secrets and transient data
 roles_config.json
+# API keys stay session-only environment variables; never write them to project files.
+.env
+.env.*
+*.key
 # Private reviewed ZAP Context exports and local non-secret attestations.
 zap/*.context
 zap/imported-context-attestation.json
