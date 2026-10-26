@@ -30,15 +30,26 @@ Hoàn thành toàn bộ phần này **trước** phần việc chuyên trách. M
 
 ### Ngày 2 — Tái lập lab và quan sát có kiểm soát
 
-Làm theo [week-1-report.md](week-1-report.md). Chỉ thao tác trên Docker local loopback.
+Làm theo [week-1-report.md](week-1-report.md), nhưng dùng **container VAmPI cá nhân tách biệt** — tuyệt đối không dùng shared container `vampi-week1` ở `127.0.0.1:5000`. Chọn tên container riêng và một port loopback còn trống, ví dụ `127.0.0.1:5001`:
 
-- [ ] Xác nhận container/port là local `127.0.0.1:5000`, không phải `0.0.0.0` hoặc host ngoài phạm vi.
-- [ ] Tạo hai user thường mới theo quy trình VAmPI local; mỗi user tạo một book fixture thuộc chính họ.
-- [ ] Dùng token của user 1 gọi đúng book fixture đã biết của user 2 để quan sát việc response trả field `secret` trong lab đào tạo.
+```bash
+docker run --detach \
+  --name vampi-foundation-<initials> \
+  --publish 127.0.0.1:5001:5000 \
+  --env vulnerable=1 \
+  --env tokentimetolive=3600 \
+  vampi-week1:local
+```
+
+- [ ] Xác nhận instance học nền là port local riêng (ví dụ `127.0.0.1:5001`), không phải `vampi-week1`, `0.0.0.0` hoặc host ngoài phạm vi.
+- [ ] Nếu cần khởi tạo database theo hướng dẫn Tuần 1, chỉ khởi tạo trên instance cá nhân này.
+- [ ] Tạo hai user thường **với username/fixture ID riêng**, không dùng `admin`, `userA`, `userB`, `week1-userA-book` hoặc `week1-userB-book`; mỗi user tạo một book fixture thuộc chính họ.
+- [ ] Dùng token của user 1 gọi đúng book fixture đã biết của user 2 để quan sát việc response trả field `secret` trong lab đào tạo cá nhân.
 - [ ] Chụp **một ảnh bằng chứng đã che** token, password, header `Authorization` và **giá trị** secret. Ảnh chỉ cần cho thấy phương thức/path, actor khác owner, status và sự hiện diện của field `secret`. Gửi ảnh đã che vào nhóm theo quy ước của nhóm.
 - [ ] Không gửi raw response, secret value, token, hoặc ảnh browser/Postman có credential chưa che.
+- [ ] Dừng/xóa instance học nền cá nhân khi hoàn thành theo quy ước Docker của nhóm; không đụng tới shared fixture.
 
-> Không gọi `GET /createdb` trong shared lab ở bước này. Endpoint đó reset database và làm hỏng fixture của cả nhóm.
+> Không gọi `GET /createdb` trong shared lab. Endpoint đó reset database và làm hỏng fixture chính thức của cả nhóm. Container `vampi-week1` tại `127.0.0.1:5000` chỉ được thao tác theo phần việc chính thức sau handoff.
 
 ### Ngày 3 — Hiểu pipeline và báo cáo
 
@@ -161,7 +172,7 @@ Tiếp tục xác nhận owner control cho hai fixture chuẩn:
 - `userA` đọc `/books/v1/week1-userA-book`;
 - `userB` đọc `/books/v1/week1-userB-book`.
 
-Cập nhật [ownership.csv](../ownership.csv) **chỉ khi** fixture thật sự được tạo lại và bạn đã xác minh quan hệ owner. Giữ nguyên năm header:
+Nếu chỉ đổi password/token nhưng vẫn giữ nguyên username `admin`/`userA`/`userB` và hai book fixture hiện hữu, **không sửa** [ownership.csv](../ownership.csv): chỉ cập nhật private `roles_config.json`. Chỉ cập nhật [ownership.csv](../ownership.csv) khi fixture thật sự được tạo lại/đổi ID và bạn đã xác minh quan hệ owner. Giữ nguyên năm header:
 
 ```text
 resource_type,resource_id,owner_role,owner_username,path_template
@@ -303,6 +314,10 @@ Nếu tìm thấy secret thật trong working tree, staged files hoặc Git hist
 - [ ] Test suite đã chạy; ghi số pass/failure thực tế.
 - [ ] `check-inputs`, `run`, `verify`, `week3` và hai compatibility entry point đã được đối chiếu theo semantic output.
 - [ ] Audit `.gitignore`/secret đã hoàn thành, không ghi secret vào evidence.
+
+### Gửi handoff
+
+Gửi template đã hoàn thành, đã redaction vào kênh chung `#vampi-authz-handoff` (hoặc kênh nhóm thay thế đã thống nhất) và tag **Thành viên 2**, **Thành viên 3** cùng người điều phối. Không đính kèm private file, token, Context hay artifact raw.
 
 ### Mẫu bàn giao redacted
 

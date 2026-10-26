@@ -27,13 +27,25 @@ Hoàn thành trước khi vào ZAP GUI hoặc viết phần báo cáo chuyên tr
 
 ### Ngày 2 — Lab local có kiểm soát
 
-Theo [week-1-report.md](week-1-report.md), chỉ thao tác Docker local loopback.
+Theo [week-1-report.md](week-1-report.md), nhưng thao tác trên **container VAmPI cá nhân tách biệt**, không phải shared `vampi-week1` tại `127.0.0.1:5000`. Chọn tên container riêng và một port loopback còn trống, ví dụ `127.0.0.1:5001`:
 
-- [ ] Xác nhận target `127.0.0.1:5000`, không LAN/Internet/production.
-- [ ] Tạo hai user/fixture theo workflow local được chấp thuận; mỗi user có một book.
-- [ ] Dùng credential user 1 đọc known book của user 2 để tận mắt thấy field `secret` trong lab training.
+```bash
+docker run --detach \
+  --name vampi-foundation-<initials> \
+  --publish 127.0.0.1:5001:5000 \
+  --env vulnerable=1 \
+  --env tokentimetolive=3600 \
+  vampi-week1:local
+```
+
+- [ ] Xác nhận target học nền là loopback port riêng, không LAN/Internet/production và không phải shared container.
+- [ ] Nếu cần khởi tạo database theo hướng dẫn Tuần 1, chỉ làm trên instance cá nhân này.
+- [ ] Tạo hai user/fixture với **username/fixture ID riêng**, không dùng `admin`, `userA`, `userB`, `week1-userA-book` hoặc `week1-userB-book`; mỗi user có một book.
+- [ ] Dùng credential user 1 đọc known book của user 2 để tận mắt thấy field `secret` trong lab training cá nhân.
 - [ ] Gửi nhóm một screenshot **đã che** mọi token/password/header và giá trị secret; chỉ hiển thị context cần thiết để chứng minh observation.
-- [ ] Không `/createdb`, enumeration, fuzz, spider hoặc request state-changing ở shared lab.
+- [ ] Dừng/xóa instance học nền cá nhân sau khi xong; không `/createdb`, enumeration, fuzz, spider hoặc request state-changing ở shared lab.
+
+> Container `vampi-week1` tại `127.0.0.1:5000` chỉ được Thành viên 1 đồng bộ trong phần việc chính thức. Thành viên 3 chỉ vào Context/authentication run sau handoff đã xác nhận.
 
 ### Ngày 3 — Đọc code/báo cáo theo thứ tự
 
@@ -292,6 +304,10 @@ Không đọc API key, token, password, raw error/HTML/body hoặc suy đoán ro
 - [ ] Ba đoạn future work tách observed/proposed và giữ correct evidence counts/status.
 - [ ] Narrative demo nói rõ ZAP endpoint/rule evidence không precise-confirm M-02/M-03.
 - [ ] Không có secret/raw ZAP content trong output bàn giao.
+
+### Gửi handoff
+
+Gửi template đã hoàn thành, đã redaction vào kênh chung `#vampi-authz-handoff` (hoặc kênh nhóm thay thế đã thống nhất) và tag người điều phối. Không đính kèm `.context`, attestation private, API key, credential, raw history hay raw ZAP HTML.
 
 ### Mẫu handoff redacted
 

@@ -26,13 +26,25 @@ Hoàn thành trước khi mở Postman hay gửi request chuyên trách.
 
 ### Ngày 2 — Lab local và quan sát controlled
 
-Làm theo [week-1-report.md](week-1-report.md), chỉ tại `127.0.0.1:5000`.
+Làm theo [week-1-report.md](week-1-report.md) trên **container VAmPI cá nhân tách biệt**, không phải shared `vampi-week1` tại `127.0.0.1:5000`. Chọn tên container riêng và một port loopback còn trống, ví dụ `127.0.0.1:5001`:
 
-- [ ] Xác nhận local loopback target, không phải Internet/LAN/production.
-- [ ] Tạo hai user và mỗi user một book fixture theo procedure được nhóm phê duyệt.
-- [ ] Dùng credential user 1 đọc known book của user 2 để quan sát field `secret` trong VAmPI training lab.
+```bash
+docker run --detach \
+  --name vampi-foundation-<initials> \
+  --publish 127.0.0.1:5001:5000 \
+  --env vulnerable=1 \
+  --env tokentimetolive=3600 \
+  vampi-week1:local
+```
+
+- [ ] Xác nhận instance học nền là loopback port riêng, không phải shared container/Internet/LAN/production.
+- [ ] Nếu cần khởi tạo database theo hướng dẫn Tuần 1, chỉ làm trên instance cá nhân này.
+- [ ] Tạo hai user và mỗi user một book fixture với **username/fixture ID riêng**; không dùng `admin`, `userA`, `userB`, `week1-userA-book` hoặc `week1-userB-book`.
+- [ ] Dùng credential user 1 đọc known book của user 2 để quan sát field `secret` trong VAmPI training lab cá nhân.
 - [ ] Chụp bằng chứng đã che hoàn toàn token/password/header và **giá trị** secret; chỉ chia sẻ ảnh đã che theo quy ước nhóm.
-- [ ] Không gọi `/createdb`; không dò identifier hoặc gửi request state-changing trong shared lab.
+- [ ] Dừng/xóa instance học nền cá nhân sau khi hoàn thành; không gọi `/createdb`, không dò identifier hoặc gửi request state-changing trên shared lab.
+
+> Container `vampi-week1` tại `127.0.0.1:5000` chỉ được Thành viên 1 đồng bộ trong phần việc chính thức. Thành viên 2 chỉ gửi bảy case chuyên trách tới đó sau khi nhận handoff hợp lệ.
 
 ### Ngày 3 — Hiểu script và tài liệu theo trình tự
 
@@ -145,7 +157,7 @@ Tạo/cập nhật local file:
 results/week3_manual_worksheet.md
 ```
 
-[week4/comparison_builder.py](../week4/comparison_builder.py) chỉ nhận row có **đúng 7 cột**, một mỗi ID M-01–M-07, `Status` và `Findings` không rỗng. Dùng chính xác header sau:
+[week4/comparison_builder.py](../week4/comparison_builder.py) parse theo **vị trí 7 cột**, không kiểm tra text của header: cột 1 là ID, cột 5 là observed status, cột 6 là finding và cột 7 là timing. Vì vậy, mẫu 4 cột cũ như `Case | Status | Thời gian (giây) | Quan sát an toàn` **không tương thích** và sẽ bị bỏ qua; dùng đúng bảng 7 cột sau:
 
 ```markdown
 | Mẫu | Endpoint | Auth | Expected | Status | Findings | Time (s) |
@@ -253,6 +265,10 @@ Mở đầu/đóng đoạn có thể dùng số timing actual đã được reda
 - [ ] M-02/M-03 chỉ dùng `BOLA confirmed` nếu actual evidence hợp lệ; M-06 vẫn observation.
 - [ ] Comparison manual status là `COMPLETED`; `elapsed_minutes` không null.
 - [ ] Đoạn ~250 từ giữ tách biệt script/manual/ZAP/BFLA và scope/case totals.
+
+### Gửi handoff
+
+Gửi template đã hoàn thành, đã redaction vào kênh chung `#vampi-authz-handoff` (hoặc kênh nhóm thay thế đã thống nhất) và tag người điều phối cùng **Thành viên 3**. Không đính kèm worksheet có secret, Postman environment, token hoặc raw response.
 
 ### Mẫu handoff redacted
 

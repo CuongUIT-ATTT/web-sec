@@ -8,6 +8,8 @@
   2. Mỗi user tạo 1 book fixture.
   3. Dùng token của user 1 gọi book của user 2 để trực tiếp xác nhận field `secret` bị lộ.
   4. Chụp màn hình gửi nhóm làm bằng chứng.
+
+  > ⚠️ **Dùng container VAmPI cá nhân riêng** (ví dụ `127.0.0.1:5001`; xem lệnh `docker run` chi tiết trong guide tương ứng), **không** dùng container `vampi-week1` tại `127.0.0.1:5000`. Đây là lab dùng chung; chỉ Thành viên 1 được thao tác trong phần việc chính thức, sau khi hoàn thành giai đoạn học nền.
 - [ ] Đọc 4 module trong `week2/`, chạy thử `week2/main.py`, rồi đọc lần lượt báo cáo **Tuần 1 → Tuần 4 → final draft** theo đúng thứ tự.
 - [ ] Họp nhanh 15–20 phút: mỗi người trình bày miệng phần mình hiểu (không đọc slide) để kiểm tra trước khi giao việc chính thức.
 
@@ -60,3 +62,13 @@
   - Le et al. (2022)
   - Zhang et al. (2024)
 - [ ] Chuẩn bị phần kể lại ngắn gọn (2–3 phút) về hành trình debug ZAP để trình bày khi demo.
+
+---
+
+> 📄 **Đây chỉ là bản tóm tắt.** Trước khi bắt đầu, mỗi người phải đọc đầy đủ guide chi tiết của mình:
+>
+> - Thành viên 1: [contributor-1-lab-reproducibility-guide.md](contributor-1-lab-reproducibility-guide.md)
+> - Thành viên 2: [contributor-2-manual-timing-comparison-guide.md](contributor-2-manual-timing-comparison-guide.md)
+> - Thành viên 3: [contributor-3-zap-research-debug-guide.md](contributor-3-zap-research-debug-guide.md)
+>
+> Các guide chi tiết quy định giới hạn an toàn, dependency/handoff giữa ba người, cách diễn giải evidence và mẫu bàn giao bắt buộc. Không bắt đầu phần việc chuyên trách chỉ dựa trên bản tóm tắt này.
