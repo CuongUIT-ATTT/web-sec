@@ -117,19 +117,51 @@ def build_week4_comparison(
         Path to ``week3_script_timing.json`` for automated pipeline timing.
     """
     # ── custom script column ──
+    measured_case_count = 12
+    confirmed_bola_count = 2
+    confirmed_user_to_admin_bola = 0
+    policy_dependent_admin_access = 0
+    if script_timing_path and Path(script_timing_path).is_file():
+        timing_path_obj = Path(script_timing_path)
+        timing = read_json(timing_path_obj)
+        if isinstance(timing.get("case_count"), int):
+            measured_case_count = timing["case_count"]
+        verification_file = timing_path_obj.parent / "week3_manual_verification.json"
+        if verification_file.is_file():
+            verif_records = read_json(verification_file)
+            if isinstance(verif_records, list):
+                confirmed_bola_count = sum(
+                    item.get("outcome") == "CONFIRMED_USER_TO_USER_BOLA"
+                    for item in verif_records
+                    if isinstance(item, dict)
+                )
+                confirmed_user_to_admin_bola = sum(
+                    item.get("outcome") == "CONFIRMED_USER_TO_ADMIN_BOLA"
+                    for item in verif_records
+                    if isinstance(item, dict)
+                )
+                policy_dependent_admin_access = sum(
+                    item.get("outcome") == "POLICY_DEPENDENT_ADMIN_ACCESS"
+                    for item in verif_records
+                    if isinstance(item, dict)
+                )
+        elapsed_ms = timing.get("elapsed_ms")
+        timing_note = None
+    else:
+        elapsed_ms = None
+        timing_note = "Timing from latest rerun not loaded."
+
     script_data: dict[str, Any] = {
         "status": "MEASURED",
-        "case_count": 12,
-        "confirmed_user_to_user_bola": 2,
+        "case_count": measured_case_count,
+        "confirmed_user_to_user_bola": confirmed_bola_count,
+        "confirmed_user_to_admin_bola": confirmed_user_to_admin_bola,
+        "policy_dependent_admin_access": policy_dependent_admin_access,
         "hidden_200_data_exposure": "Yes; fresh owner-baseline secret comparison.",
+        "elapsed_ms": elapsed_ms,
     }
-    if script_timing_path and Path(script_timing_path).is_file():
-        timing = read_json(script_timing_path)
-        script_data["elapsed_ms"] = timing.get("elapsed_ms")
-    else:
-        # Use the known rerun timing.
-        script_data["elapsed_ms"] = None
-        script_data["note"] = "Timing from latest rerun not loaded."
+    if timing_note:
+        script_data["note"] = timing_note
 
     # ── manual column ──
     manual_data = _parse_manual_worksheet(manual_worksheet_path)
@@ -183,13 +215,13 @@ def build_week4_comparison(
     return {
         "comparison_scope": {
             "target": "http://127.0.0.1:5000",
-            "script_total_cases": 12,
+            "script_total_cases": measured_case_count,
             "manual_sample_cases": 7,
             "bfla_disposable_target": "http://127.0.0.1:5003",
             "normalization_note": (
-                "Finding totals must be compared on the same selected "
-                "endpoint subset; 12 automated cases, 7 manual samples, "
-                "and BFLA disposable cases are not directly interchangeable."
+                f"Finding totals must be compared on the same selected "
+                f"endpoint subset; {measured_case_count} automated cases, 7 manual samples, "
+                f"and BFLA disposable cases are not directly interchangeable."
             ),
         },
         "custom_script": script_data,

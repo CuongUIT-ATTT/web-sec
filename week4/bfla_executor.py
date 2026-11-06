@@ -20,8 +20,10 @@ from vampi_authz_lab.common import read_json, write_redacted_json
 #: targeted by a destructive operation.
 KNOWN_FIXTURE_USERNAMES: frozenset[str] = frozenset({
     "admin",
+    "admin2",
     "userA",
     "userB",
+    "userC",
     "name1",
     "name2",
 })
@@ -177,6 +179,9 @@ def run_bfla_week4(
 
     # Build and write the Week 4 findings artifact.
     findings = _build_findings(run_id, execution_receipt, saved_manifest)
+    extended_file = Path(bfla_results_root) / run_id / "extended-state-receipt.json"
+    if extended_file.is_file():
+        findings["extended_state_findings"] = read_json(extended_file).get("operations", {})
     output_path = _week4_bfla_findings_path(run_id, results_root)
     write_redacted_json(output_path, findings)
     return findings

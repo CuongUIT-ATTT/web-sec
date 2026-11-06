@@ -56,8 +56,30 @@ def _parse_body(body: bytes) -> tuple[Any | None, str | None]:
         return None, decoded
 
 
-def _response_record(status_code: int | None, headers: Any, body: bytes, error: str | None = None) -> dict[str, Any]:
+def _sanitize_debug_payload(
+    endpoint: str, response_json: Any | None, response_text: str | None
+) -> tuple[Any | None, str | None]:
+    """Strip raw password values from /users/v1/_debug, keeping only user_record_count and field names."""
+    if endpoint == "/users/v1/_debug" and isinstance(response_json, dict) and isinstance(response_json.get("users"), list):
+        users = response_json["users"]
+        field_names = sorted({str(key) for user in users if isinstance(user, dict) for key in user.keys()})
+        return {
+            "user_record_count": len(users),
+            "exposed_field_names": field_names,
+        }, None
+    return response_json, response_text
+
+
+def _response_record(
+    status_code: int | None,
+    headers: Any,
+    body: bytes,
+    error: str | None = None,
+    *,
+    endpoint: str = "",
+) -> dict[str, Any]:
     response_json, response_text = _parse_body(body)
+    response_json, response_text = _sanitize_debug_payload(endpoint, response_json, response_text)
     return {
         "status_code": status_code,
         "content_type": headers.get("Content-Type", "") if headers else "",
@@ -89,13 +111,13 @@ def send_read_request(
     request = Request(concrete_url(base_url, endpoint), headers=headers, method=normalized_method)
     try:
         with urlopen(request, timeout=timeout) as response:
-            return _response_record(response.status, response.headers, response.read())
+            return _response_record(response.status, response.headers, response.read(), endpoint=endpoint)
     except HTTPError as error:
-        return _response_record(error.code, error.headers, error.read())
+        return _response_record(error.code, error.headers, error.read(), endpoint=endpoint)
     except URLError as error:
-        return _response_record(None, None, b"", error=f"Network error: {error.reason}")
+        return _response_record(None, None, b"", error=f"Network error: {error.reason}", endpoint=endpoint)
     except TimeoutError:
-        return _response_record(None, None, b"", error="Request timed out")
+        return _response_record(None, None, b"", error="Request timed out", endpoint=endpoint)
 
 
 def load_roles_config(path: str | Path) -> dict[str, dict[str, str]]:
@@ -130,13 +152,16 @@ def preflight(
         if result["status_code"] != 200 or not isinstance(response_data, dict) or response_data.get("username") != role["username"]:
             findings.append(f"Role preflight failed for '{role_name}'; renew its local token.")
 
-    for fixture in fixtures:
-        if fixture["resource_type"] != "book":
-            continue
+    active_book_fixtures = [
+        fixture
+        for fixture in fixtures
+        if fixture["resource_type"] == "book" and fixture["owner_role"] in roles_config
+    ]
+    if any(fixture["resource_type"] == "book" for fixture in fixtures) and not active_book_fixtures:
+        findings.append("No book fixtures matched any configured role in roles_config.")
+
+    for fixture in active_book_fixtures:
         owner = fixture["owner_role"]
-        if owner not in roles_config:
-            findings.append(f"Book fixture '{fixture['resource_id']}' has an unknown owner role.")
-            continue
         result = send_read_request(
             "GET",
             fixture["path_template"].replace("{book_title}", fixture["resource_id"]),
@@ -148,7 +173,7 @@ def preflight(
 
     if findings:
         raise RuntimeError("Preflight failed: " + " ".join(findings))
-    return {"target": ALLOWED_BASE_URL, "roles_verified": sorted(roles_config), "book_fixtures_verified": sum(f["resource_type"] == "book" for f in fixtures)}
+    return {"target": ALLOWED_BASE_URL, "roles_verified": sorted(roles_config), "book_fixtures_verified": len(active_book_fixtures)}
 
 
 def run_all_tests(

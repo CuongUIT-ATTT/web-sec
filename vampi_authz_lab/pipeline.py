@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from week2.matrix_builder import build_test_matrix, load_ownership
+from week2.matrix_builder import build_test_matrix, filter_fixtures_for_roles, load_ownership
 from week2.request_runner import ALLOWED_BASE_URL, load_roles_config, preflight, run_all_tests, validate_base_url
 from week2.response_comparator import analyze_all
 from week2.spec_parser import extract_endpoints, load_spec
@@ -21,7 +21,10 @@ def validate_inputs(spec_path: Path, roles_path: Path, ownership_path: Path) -> 
     spec = load_spec(spec_path)
     endpoints = extract_endpoints(spec)
     roles = load_roles_config(roles_path)
-    fixtures = load_ownership(ownership_path)
+    all_fixtures = load_ownership(ownership_path)
+    fixtures = filter_fixtures_for_roles(all_fixtures, roles)
+    if not fixtures:
+        raise ValueError("No ownership fixtures matched the configured roles in roles_config.")
     return {
         "spec_path": str(spec_path),
         "roles_path": str(roles_path),
@@ -29,6 +32,7 @@ def validate_inputs(spec_path: Path, roles_path: Path, ownership_path: Path) -> 
         "operation_count": len(endpoints),
         "role_names": sorted(roles),
         "fixture_count": len(fixtures),
+        "total_ownership_rows": len(all_fixtures),
         "ownership_input_format": "CSV",
     }
 
@@ -45,8 +49,8 @@ def run_pipeline(
     spec = load_spec(spec_path)
     endpoints = extract_endpoints(spec)
     roles_config = load_roles_config(roles_path)
-    fixtures = load_ownership(ownership_path)
-    matrix = build_test_matrix(endpoints, fixtures, sorted(roles_config))
+    fixtures = filter_fixtures_for_roles(load_ownership(ownership_path), roles_config)
+    matrix = build_test_matrix(endpoints, fixtures, sorted(roles_config), roles_config=roles_config)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     write_redacted_json(output_dir / "endpoint_inventory.json", endpoints)
@@ -82,7 +86,7 @@ def run_verification(
     spec = load_spec(spec_path)
     endpoints = extract_endpoints(spec)
     roles_config = load_roles_config(roles_path)
-    fixtures = load_ownership(ownership_path)
+    fixtures = filter_fixtures_for_roles(load_ownership(ownership_path), roles_config)
     verification = independently_verify_books(roles_config, fixtures, base_url)
     findings = classify_findings(verification, endpoints)
 

@@ -34,6 +34,33 @@ class SpecParserTests(unittest.TestCase):
         self.assertTrue(endpoint["state_changing"])
         self.assertFalse(endpoint["is_bola_candidate"])
 
+    def test_marks_debug_write_bola_and_mass_assignment_candidates(self):
+        spec = {
+            "paths": {
+                "/users/v1/_debug": {"get": {"operationId": "api_views.users.debug", "responses": {"200": {}}}},
+                "/users/v1/{username}/password": {
+                    "put": {
+                        "operationId": "api_views.users.update_password",
+                        "parameters": [{"name": "username", "in": "path"}],
+                        "requestBody": {},
+                        "responses": {"204": {}},
+                    }
+                },
+                "/users/v1/register": {
+                    "post": {
+                        "operationId": "api_views.users.register_user",
+                        "requestBody": {},
+                        "responses": {"200": {}},
+                    }
+                },
+            }
+        }
+        by_path = {ep["path"]: ep for ep in extract_endpoints(spec)}
+        self.assertTrue(by_path["/users/v1/_debug"]["is_excessive_data_exposure_candidate"])
+        self.assertFalse(by_path["/users/v1/_debug"]["is_bfla_candidate"])
+        self.assertTrue(by_path["/users/v1/{username}/password"]["is_write_bola_candidate"])
+        self.assertTrue(by_path["/users/v1/register"]["is_mass_assignment_candidate"])
+
 
 if __name__ == "__main__":
     unittest.main()

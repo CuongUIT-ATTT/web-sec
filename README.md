@@ -18,8 +18,8 @@ The database was initialized with `GET /createdb` before creating Week 1 account
 | File | Purpose | Sensitivity |
 | --- | --- | --- |
 | `vampi_spec.json` | OpenAPI specification fetched from the running local API | Local lab metadata |
-| `roles_config.json` | Bearer tokens for `admin`, `userA`, and `userB` | Secret — mode `0600`, excluded from version control |
-| `ownership.csv` | Resource-to-owner mapping for the Week 2 test matrix | Local lab metadata |
+| `roles_config.json` | Bearer tokens for `admin`, `admin2`, `userA`, `userB`, and `userC` | Secret — mode `0600`, excluded from version control |
+| `ownership.csv` | Resource-to-owner mapping for the test matrix (8 fixtures across 5 roles) | Local lab metadata |
 
 The VAmPI source is kept in `VAmPI-source/` as downloaded third-party code. Treat it as untrusted and do not run Python directly from that directory.
 
@@ -100,11 +100,11 @@ Run dependency-free unit tests after installation. Because `-I` excludes the che
 .venv/bin/python -I -m unittest discover -s tests -v
 ```
 
-The current complete suite contains **128 tests**. Historical report counts are stage-specific and not interchangeable: Week 2 recorded 13 tests, Week 3 recorded 19 before later BFLA/ZAP work, and the pre-quiescence Week 4 regression suite recorded 87.
+The current complete suite contains **136 tests** (expanded from 128 tests before the multi-role and extended state-changing upgrade). Historical report counts are stage-specific and not interchangeable: Week 2 recorded 13 tests, Week 3 recorded 19 before later BFLA/ZAP work, and the pre-quiescence Week 4 regression suite recorded 87.
 
 The packaging configuration is in `pyproject.toml`; no `requirements.txt` is provided because no non-standard-library runtime package is required.
 
-The latest completed packaged rerun recorded 12 read-only known-fixture cases in **2032.298 ms**, including preflight and the configured 150 ms inter-case delay. This host/Docker-specific pipeline measurement is not a general benchmark and does not replace a human Postman/Burp/stopwatch measurement. See `results/rerun-week3/week3_script_timing.json`.
+The latest completed packaged rerun recorded 32 read-only cases (across 5 roles and 8 fixtures, plus `GET /users/v1/_debug` excessive data exposure checks), including preflight and the configured 150 ms inter-case delay. This host/Docker-specific pipeline measurement is not a general benchmark and does not replace a human Postman/Burp/stopwatch measurement. See `results/rerun-week3/week3_script_timing.json`.
 
 ## Week 2 safe authorization pipeline
 
@@ -255,7 +255,9 @@ docker compose --project-name vampi-bfla-a1b2c3d4 --file bfla-disposable/compose
 
 .venv/bin/vampi-bfla-disposable prepare --run-id a1b2c3d4
 .venv/bin/vampi-bfla-disposable execute --run-id a1b2c3d4
+# Optional explicit extended state-changing suite on :5003 (PUT email/password & POST register mass assignment):
+.venv/bin/vampi-bfla-disposable execute-extended --run-id a1b2c3d4
 .venv/bin/vampi-bfla-disposable teardown --run-id a1b2c3d4
 ```
 
-`preflight` is a required, immutable attestation stage for a new run ID. `prepare` and `execute` re-check its receipt, the shared-lab snapshot, and the disposable image identity before any API action; `teardown` reloads the receipt when available and records fresh shared-lab snapshots while removing only the scoped project. Always run `teardown`, including if `execute` reports an unexpected authorization success. The completed evidence run is stored in `results/bfla-disposable/bf1a2026/` and records `DENIED_CONTROL` plus `TEARDOWN_COMPLETE`.
+`preflight` is a required, immutable attestation stage for a new run ID. `prepare` and `execute` re-check its receipt, the shared-lab snapshot, and the disposable image identity before any API action; `execute` remains strictly locked to `DELETE /users/v1/{username}`. The separate opt-in `execute-extended` subcommand must be explicitly invoked by the operator to permit `GET /me` and `PUT /users/v1/{victim}/(email|password)` on `http://127.0.0.1:5003` for post-condition verification of Write-BOLA vs HTTP-204 False Positive and Mass Assignment. `teardown` reloads the receipt when available and records fresh shared-lab snapshots while removing only the scoped project. Always run `teardown`, including if `execute` reports an unexpected authorization success. The completed evidence run is stored in `results/bfla-disposable/bf1a2026/` and records `DENIED_CONTROL` plus `TEARDOWN_COMPLETE`.

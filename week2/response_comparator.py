@@ -59,6 +59,32 @@ def _sensitive_matches(response_json: Any, baseline_json: Any) -> list[str]:
     return matches
 
 
+def _sanitize_and_extract_debug_exposure(response_json: Any) -> tuple[Any, list[str]]:
+    """Ensure debug responses keep only user_record_count and exposed_field_names, never password values."""
+    if isinstance(response_json, dict) and isinstance(response_json.get("users"), list):
+        users = response_json["users"]
+        field_names = sorted({str(key) for user in users if isinstance(user, dict) for key in user.keys()})
+        sanitized = {
+            "user_record_count": len(users),
+            "exposed_field_names": field_names,
+        }
+        sensitive = [f"$.users[*].{field}" for field in field_names if field.lower() in SENSITIVE_FIELD_NAMES]
+        return sanitized, sensitive
+    if (
+        isinstance(response_json, dict)
+        and isinstance(response_json.get("user_record_count"), int)
+        and isinstance(response_json.get("exposed_field_names"), list)
+    ):
+        field_names = [str(field) for field in response_json["exposed_field_names"]]
+        sensitive = (
+            [f"$.users[*].{field}" for field in field_names if field.lower() in SENSITIVE_FIELD_NAMES]
+            if response_json["user_record_count"] > 0
+            else []
+        )
+        return response_json, sensitive
+    return response_json, _standalone_sensitive_paths(response_json)
+
+
 def analyze_result(result: dict[str, Any], baseline: dict[str, Any] | None = None) -> dict[str, Any]:
     """Classify one case without treating a successful status alone as proof."""
     analyzed = dict(result)
@@ -108,6 +134,34 @@ def analyze_result(result: dict[str, Any], baseline: dict[str, Any] | None = Non
                 + "."
             ],
         )
+    elif category in {"EXCESSIVE_DATA_EXPOSURE", "BFLA_DEBUG_EXPOSURE"}:
+        sanitized_json, standalone_paths = _sanitize_and_extract_debug_exposure(response_json)
+        analyzed["response_json"] = sanitized_json
+        analyzed["response_text"] = None
+        analyzed["evidence_paths"] = standalone_paths
+        if standalone_paths and result["scenario"] in {"anonymous", "unprivileged_role"}:
+            analyzed.update(
+                verdict="CONFIRMED",
+                reasons=[
+                    "Debug endpoint exposed excessive sensitive data (plaintext credentials) to unprivileged or anonymous caller at "
+                    + ", ".join(standalone_paths)
+                    + "."
+                ],
+            )
+        elif standalone_paths and result["scenario"] == "admin_control":
+            analyzed.update(
+                verdict="OBSERVATION",
+                reasons=[
+                    "Admin caller received plaintext credentials from debug endpoint (Excessive Data Exposure) at "
+                    + ", ".join(standalone_paths)
+                    + "."
+                ],
+            )
+        else:
+            analyzed.update(
+                verdict="INCONCLUSIVE",
+                reasons=["Debug endpoint returned 2xx without recognizable sensitive fields."],
+            )
     elif result["scenario"] in {"anonymous", "invalid_token"}:
         analyzed.update(
             verdict="INCONCLUSIVE",

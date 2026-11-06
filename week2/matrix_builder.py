@@ -3,10 +3,27 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
 READ_ONLY_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def filter_fixtures_for_roles(
+    fixtures: list[dict[str, str]], roles: Iterable[str] | Mapping[str, Any]
+) -> list[dict[str, str]]:
+    """Keep only fixtures whose owner_role is present in the configured roles."""
+    role_set = set(roles.keys()) if isinstance(roles, Mapping) else set(roles)
+    return [fixture for fixture in fixtures if fixture.get("owner_role") in role_set]
+
+
+def _is_admin_role(role: str, roles_config: Mapping[str, Any] | None = None) -> bool:
+    if isinstance(roles_config, Mapping):
+        entry = roles_config.get(role)
+        if isinstance(entry, Mapping) and "is_admin" in entry:
+            return bool(entry["is_admin"])
+    return role.startswith("admin")
 
 
 def load_ownership(path: str | Path) -> list[dict[str, str]]:
@@ -110,15 +127,70 @@ def _append_public_observation(
     )
 
 
+def _append_excessive_exposure_cases(
+    cases: list[dict[str, Any]],
+    endpoint: dict[str, Any],
+    roles: list[str],
+    roles_config: Mapping[str, Any] | None = None,
+) -> None:
+    resource_id = endpoint["path"].strip("/").replace("/", "-") or "root"
+    synthetic_fixture = {
+        "resource_type": "debug_endpoint",
+        "resource_id": resource_id,
+        "owner_role": "admin",
+        "owner_username": "admin",
+        "path_template": endpoint["path"],
+    }
+    common = {
+        "risk_category": "EXCESSIVE_DATA_EXPOSURE",
+        "operation_id": endpoint["operation_id"],
+        "method": endpoint["method"],
+        "endpoint": endpoint["path"],
+        "fixture": synthetic_fixture,
+        "enabled_read_only": True,
+    }
+    cases.append(
+        {
+            **common,
+            "case_id": _case_id(endpoint["operation_id"], "anonymous", "anonymous", resource_id),
+            "scenario": "anonymous",
+            "actor_role": None,
+            "expected_outcome": "deny",
+        }
+    )
+    for role in roles:
+        is_admin = _is_admin_role(role, roles_config)
+        scenario = "admin_control" if is_admin else "unprivileged_role"
+        cases.append(
+            {
+                **common,
+                "case_id": _case_id(endpoint["operation_id"], scenario.replace("_", "-"), role, resource_id),
+                "scenario": scenario,
+                "actor_role": role,
+                "expected_outcome": "observe" if is_admin else "deny",
+            }
+        )
+
+
 def build_test_matrix(
-    endpoints: list[dict[str, Any]], fixtures: list[dict[str, str]], roles: list[str]
+    endpoints: list[dict[str, Any]],
+    fixtures: list[dict[str, str]],
+    roles: list[str],
+    roles_config: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Generate tests only where an endpoint exactly matches a known fixture path."""
+    """Generate tests only where an endpoint matches a known fixture path or read-only exposure candidate."""
+    active_fixtures = filter_fixtures_for_roles(fixtures, roles)
     cases: list[dict[str, Any]] = []
     for endpoint in endpoints:
         if endpoint["forbidden"] or endpoint["method"] not in READ_ONLY_METHODS:
             continue
-        for fixture in _matching_fixtures(endpoint, fixtures):
+        if (
+            endpoint.get("is_excessive_data_exposure_candidate")
+            or (endpoint.get("is_bfla_candidate") and not endpoint.get("path_params"))
+        ):
+            _append_excessive_exposure_cases(cases, endpoint, roles, roles_config)
+            continue
+        for fixture in _matching_fixtures(endpoint, active_fixtures):
             if endpoint["requires_auth"] and endpoint["is_bola_candidate"]:
                 _append_book_cases(cases, endpoint, fixture, roles)
             elif endpoint["public_object_read"]:
