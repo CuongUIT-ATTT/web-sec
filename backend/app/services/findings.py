@@ -3,12 +3,30 @@
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.domain.contracts import AuthorizationConclusion
 from backend.app.persistence.models import Finding, FindingReproduction, RunResult
 from backend.app.scanner.classification.findings import FindingKey
 from backend.app.scanner.classification.policy import PolicyRule
+
+
+def _load_or_create_finding(session: Session, *, project_id: int, fingerprint: str, values: dict[str, object]) -> Finding:
+    existing = session.scalar(select(Finding).where(Finding.project_id == project_id, Finding.fingerprint == fingerprint))
+    if existing is not None:
+        return existing
+    try:
+        with session.begin_nested():
+            finding = Finding(project_id=project_id, fingerprint=fingerprint, **values)
+            session.add(finding)
+            session.flush()
+        return finding
+    except IntegrityError:
+        finding = session.scalar(select(Finding).where(Finding.project_id == project_id, Finding.fingerprint == fingerprint))
+        if finding is None:
+            raise
+        return finding
 
 
 def record_confirmed_reproduction(
@@ -23,7 +41,7 @@ def record_confirmed_reproduction(
     restricted_pointers: tuple[str, ...],
     policy: PolicyRule,
 ) -> Finding:
-    """Create one group per stable signal, never per sensitive resource value or direction."""
+    """Create exactly one normalized finding and reproduction for this immutable result."""
     key = FindingKey(
         project_id=project_id,
         method="GET",
@@ -36,26 +54,36 @@ def record_confirmed_reproduction(
         conclusion=AuthorizationConclusion.CONFIRMED_VIOLATION,
     )
     fingerprint = key.fingerprint()
-    finding = session.scalar(select(Finding).where(Finding.project_id == project_id, Finding.fingerprint == fingerprint))
-    if finding is None:
-        finding = Finding(
-            project_id=project_id,
-            fingerprint=fingerprint,
-            conclusion=AuthorizationConclusion.CONFIRMED_VIOLATION,
-            operation_method="GET",
-            operation_path=operation_path,
-            policy_id=policy.id,
-            policy_version=policy.version,
-            resource_type_id=policy.resource_type_id,
-            resource_pointer=resource_pointer,
-            restricted_pointers=sorted(restricted_pointers),
-        )
-        session.add(finding)
-        session.flush()
-    session.add(FindingReproduction(
-        finding_id=finding.id,
-        run_result_id=run_result.id,
-        actor_identity_id=actor_identity_id,
-        resource_id=resource_id,
+    finding = _load_or_create_finding(
+        session,
+        project_id=project_id,
+        fingerprint=fingerprint,
+        values={
+            "conclusion": AuthorizationConclusion.CONFIRMED_VIOLATION,
+            "operation_method": "GET",
+            "operation_path": operation_path,
+            "policy_id": policy.id,
+            "policy_version": policy.version,
+            "resource_type_id": policy.resource_type_id,
+            "resource_pointer": resource_pointer,
+            "restricted_pointers": sorted(restricted_pointers),
+        },
+    )
+    existing = session.scalar(select(FindingReproduction).where(
+        FindingReproduction.finding_id == finding.id,
+        FindingReproduction.run_result_id == run_result.id,
     ))
+    if existing is None:
+        try:
+            with session.begin_nested():
+                session.add(FindingReproduction(
+                    finding_id=finding.id,
+                    run_result_id=run_result.id,
+                    actor_identity_id=actor_identity_id,
+                    resource_id=resource_id,
+                ))
+                session.flush()
+        except IntegrityError:
+            # A concurrent worker created the same unique reproduction; preserve it.
+            pass
     return finding

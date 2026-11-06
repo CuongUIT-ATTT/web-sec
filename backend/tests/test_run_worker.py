@@ -8,7 +8,7 @@ from backend.app.core.secrets import SecretBox
 from backend.app.core.settings import Settings
 from backend.app.domain.contracts import AuthorizationConclusion, ExecutionStatus, RunStatus
 from backend.app.persistence.database import create_session_factory
-from backend.app.persistence.models import Finding, FindingReproduction, Project, Run, RunIdentitySecret, RunResult
+from backend.app.persistence.models import Finding, FindingReproduction, Project, Run, RunExecutionStats, RunIdentitySecret, RunResult
 from backend.app.scanner.execution.http_client import HttpObservation
 from backend.app.workers import runner
 
@@ -69,9 +69,10 @@ async def test_run_worker_uses_fresh_principal_and_owner_controls(monkeypatch, t
             RunIdentitySecret(run_id=run.id, identity_id=2, ciphertext=bob_ciphertext, key_version=1),
         ])
 
-    with session_factory.begin() as session:
+    with session_factory() as session:
         run = session.query(Run).one()
         await runner.execute_run(session, run, settings)
+        session.commit()
 
     with session_factory() as session:
         run = session.query(Run).one()
@@ -85,3 +86,106 @@ async def test_run_worker_uses_fresh_principal_and_owner_controls(monkeypatch, t
     assert results[1].http_status == 403
     assert len(findings) == 1
     assert len(reproductions) == 1
+
+
+@pytest.mark.asyncio
+async def test_batch_worker_uses_queued_token_after_identity_rotation(monkeypatch, tmp_path) -> None:
+    key = Fernet.generate_key().decode("ascii")
+    settings = Settings(Path("unused.sqlite3"), "password", "s" * 32, key, (ipaddress.ip_network("127.0.0.1/32"),), frozenset({5000}), 32768, 5.0)
+    box = SecretBox.from_key(key)
+    queued_ciphertext, _ = box.encrypt_bearer("queued-token")
+    current_ciphertext, _ = box.encrypt_bearer("rotated-token")
+    observed_tokens: list[str | None] = []
+
+    async def fake_get_json(*, bearer_token: str | None, **kwargs) -> HttpObservation:
+        observed_tokens.append(bearer_token)
+        return observation(200, {"data": {"username": "alice", "id": "book-1", "secret": "controlled"}})
+
+    monkeypatch.setattr(runner, "get_json", fake_get_json)
+    snapshot = {
+        "schema_version": 2, "run_kind": "BATCH_ALL_SELECTED",
+        "target": {"base_url": "http://127.0.0.1:5000", "verification_path": "/me", "timeout_seconds": 5, "request_limit": 3},
+        "request_plan": {"identity_verifications": 1, "owner_baselines": 1, "actor_cases": 1, "planned_attempts": 3},
+        "identities": [{"id": 1, "role": "reader", "principal_pointer": "/data/username", "expected_principal": "alice"}],
+        "targets": [{"operation": {"id": 9, "path": "/books/{id}", "method": "GET"}, "resource": {"id": 7, "external_id": "book-1", "resource_type_id": 5, "owner_identity_id": 1, "path_parameter": "id", "resource_id_pointer": "/data/id", "restricted_pointers": ["/data/secret"]}, "policies": []}],
+    }
+    session_factory = create_session_factory(tmp_path / "rotation.sqlite3")
+    with session_factory.begin() as session:
+        project = Project(name="Lab", description=""); session.add(project); session.flush()
+        run = Run(project_id=project.id, status=RunStatus.RUNNING, snapshot=snapshot); session.add(run); session.flush()
+        session.add(RunIdentitySecret(run_id=run.id, identity_id=1, ciphertext=queued_ciphertext, key_version=1))
+        # A later current credential is deliberately not consulted by the batch worker.
+        from backend.app.persistence.models import Identity, IdentitySecret
+        identity = Identity(id=1, project_id=project.id, display_name="Alice")
+        session.add(identity); session.flush()
+        session.add(IdentitySecret(identity_id=identity.id, ciphertext=current_ciphertext, key_version=1, fingerprint="a" * 64))
+    with session_factory() as session:
+        await runner.execute_run(session, session.query(Run).one(), settings)
+        session.commit()
+    assert observed_tokens == ["queued-token"] * 3
+
+
+@pytest.mark.asyncio
+async def test_batch_worker_uses_one_verification_and_baseline_per_configured_target(monkeypatch, tmp_path) -> None:
+    key = Fernet.generate_key().decode("ascii")
+    settings = Settings(Path("unused.sqlite3"), "password", "s" * 32, key, (ipaddress.ip_network("127.0.0.1/32"),), frozenset({5000}), 32768, 5.0)
+    box = SecretBox.from_key(key)
+    alice_ciphertext, _ = box.encrypt_bearer("alice-token")
+    bob_ciphertext, _ = box.encrypt_bearer("bob-token")
+    calls: list[tuple[str, str | None]] = []
+
+    async def fake_get_json(*, api_path: str, bearer_token: str | None, **kwargs) -> HttpObservation:
+        calls.append((api_path, bearer_token))
+        if api_path == "/me":
+            return observation(200, {"data": {"username": "alice" if bearer_token == "alice-token" else "bob"}})
+        return observation(200, {"data": {"id": "book-1", "secret": "controlled"}})
+
+    monkeypatch.setattr(runner, "get_json", fake_get_json)
+    snapshot = {
+        "schema_version": 2,
+        "run_kind": "BATCH_ALL_SELECTED",
+        "target": {"base_url": "http://127.0.0.1:5000", "verification_path": "/me", "timeout_seconds": 5, "request_limit": 5},
+        "request_plan": {"identity_verifications": 2, "owner_baselines": 1, "actor_cases": 2, "maximum_http_requests": 5},
+        "identities": [
+            {"id": 1, "role": "reader", "principal_pointer": "/data/username", "expected_principal": "alice"},
+            {"id": 2, "role": "reader", "principal_pointer": "/data/username", "expected_principal": "bob"},
+        ],
+        "targets": [{
+            "operation": {"id": 9, "path": "/books/{id}", "method": "GET"},
+            "resource": {"id": 7, "external_id": "book-1", "resource_type_id": 5, "owner_identity_id": 1, "path_parameter": "id", "resource_id_pointer": "/data/id", "restricted_pointers": ["/data/secret"]},
+            "policies": [
+                {"id": 1, "version": 1, "operation_id": 9, "resource_type_id": 5, "identity_id": 1, "role": None, "resource_id": None, "decision": "ALLOW"},
+                {"id": 2, "version": 1, "operation_id": 9, "resource_type_id": 5, "identity_id": 2, "role": None, "resource_id": None, "decision": "DENY"},
+            ],
+        }],
+    }
+    session_factory = create_session_factory(tmp_path / "app.sqlite3")
+    with session_factory.begin() as session:
+        project = Project(name="Lab", description="")
+        session.add(project)
+        session.flush()
+        run = Run(project_id=project.id, status=RunStatus.RUNNING, snapshot=snapshot)
+        session.add(run)
+        session.flush()
+        session.add_all([
+            RunIdentitySecret(run_id=run.id, identity_id=1, ciphertext=alice_ciphertext, key_version=1),
+            RunIdentitySecret(run_id=run.id, identity_id=2, ciphertext=bob_ciphertext, key_version=1),
+        ])
+
+    with session_factory() as session:
+        await runner.execute_run(session, session.query(Run).one(), settings)
+        session.commit()
+
+    with session_factory() as session:
+        results = list(session.query(RunResult).order_by(RunResult.case_key))
+        completed_run = session.query(Run).one()
+        stats = session.query(RunExecutionStats).one()
+
+    assert completed_run.status == RunStatus.COMPLETED
+    assert len(calls) == 5
+    assert calls.count(("/me", "alice-token")) == 1
+    assert calls.count(("/me", "bob-token")) == 1
+    assert len(results) == 2
+    assert results[0].case_key == "operation:9:resource:7:actor:1"
+    assert results[1].case_key == "operation:9:resource:7:actor:2"
+    assert (stats.planned_attempts, stats.transport_attempts, stats.completed_responses) == (5, 5, 5)

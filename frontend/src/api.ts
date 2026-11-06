@@ -5,8 +5,12 @@ export type Operation = { id: number; operation_key: string; method: string; pat
 export type ResourceType = { id: number; name: string; resource_id_pointer: string; restricted_pointers: string[] };
 export type Resource = { id: number; resource_type_id: number; external_id: string; owner_identity_id: number; path_parameter: string };
 export type Policy = { id: number; version: number; operation_id: number; resource_type_id: number; decision: "ALLOW" | "DENY" | "UNKNOWN"; identity_id: number | null; role: string | null; resource_id: number | null };
+export type OperationResourceMapping = { id: number; project_id: number; operation_id: number; resource_type_id: number; selected: boolean };
+export type BatchPlanTarget = { operation_id: number; operation_path: string; resource_type_id: number; resource_type_name: string; resource_count: number; actor_case_count: number };
+export type BatchMatrix = { identity_count: number; concrete_target_count: number; actor_case_count: number; identity_verifications: number; owner_baselines: number; planned_attempts: number; maximum_http_requests: number; request_limit: number; within_request_limit: boolean; targets: BatchPlanTarget[] };
 export type MatrixCase = { case_key: string; control_type: string; actor_identity_id: number; resource_id: number; policy_status: string; warnings: string[] };
-export type Run = { id: number; project_id: number; status: string; snapshot: Record<string, unknown> };
+export type ExecutionSummary = { planned_attempts: number; transport_attempts: number; completed_responses: number; scope_blocked: number; transport_errors: number; cancelled_cases: number };
+export type Run = { id: number; project_id: number; status: string; snapshot: Record<string, unknown>; execution_summary: ExecutionSummary | null };
 export type Result = { case_key: string; execution_status: string; authorization_conclusion: string; reason_codes: string[]; http_status: number | null; response_metadata: Record<string, unknown> };
 export type Finding = { id: number; fingerprint: string; conclusion: string; operation: { method: string; path: string }; policy: { id: number; version: number }; reproduction_count: number };
 
@@ -58,6 +62,9 @@ export const api = {
   importOpenApi: (projectId: number, document: Record<string, unknown>) => request<Operation[]>(`/api/projects/${projectId}/openapi`, { method: "POST", body: JSON.stringify({ document }) }),
   operations: (projectId: number) => request<Operation[]>(`/api/projects/${projectId}/operations`),
   updateOperation: (operationId: number, selected: boolean) => patch<Operation>(`/api/operations/${operationId}`, { selected }),
+  operationResourceMappings: (projectId: number) => request<OperationResourceMapping[]>(`/api/projects/${projectId}/operation-resource-mappings`),
+  createOperationResourceMapping: (projectId: number, value: { operation_id: number; resource_type_id: number; selected: boolean }) => request<OperationResourceMapping>(`/api/projects/${projectId}/operation-resource-mappings`, { method: "POST", body: JSON.stringify(value) }),
+  updateOperationResourceMapping: (mappingId: number, selected: boolean) => patch<OperationResourceMapping>(`/api/operation-resource-mappings/${mappingId}`, { selected }),
   createResourceType: (projectId: number, value: ResourceTypeInput) => request<ResourceType>(`/api/projects/${projectId}/resource-types`, { method: "POST", body: JSON.stringify(value) }),
   updateResourceType: (resourceTypeId: number, value: ResourceTypeInput) => patch<ResourceType>(`/api/resource-types/${resourceTypeId}`, value),
   resourceTypes: (projectId: number) => request<ResourceType[]>(`/api/projects/${projectId}/resource-types`),
@@ -69,6 +76,8 @@ export const api = {
   updatePolicy: (policyId: number, value: PolicyInput) => patch<Policy>(`/api/policies/${policyId}`, value),
   matrix: (projectId: number, operationId: number, resourceId: number) => request<MatrixCase[]>(`/api/projects/${projectId}/matrix?operation_id=${operationId}&resource_id=${resourceId}`),
   createRun: (projectId: number, value: { target_id: number; resource_id: number; operation_id: number }) => request<Run>(`/api/projects/${projectId}/runs`, { method: "POST", body: JSON.stringify(value) }),
+  batchMatrix: (projectId: number, targetId: number) => request<BatchMatrix>(`/api/projects/${projectId}/batch-matrix?target_id=${targetId}`),
+  createBatchRun: (projectId: number, targetId: number) => request<Run>(`/api/projects/${projectId}/batch-runs`, { method: "POST", body: JSON.stringify({ target_id: targetId }) }),
   runs: (projectId: number) => request<Run[]>(`/api/projects/${projectId}/runs`),
   results: (runId: number) => request<Result[]>(`/api/runs/${runId}/results`),
   findings: (projectId: number) => request<Finding[]>(`/api/projects/${projectId}/findings`),

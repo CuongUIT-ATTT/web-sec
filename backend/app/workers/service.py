@@ -30,13 +30,15 @@ async def worker_loop(session_factory: sessionmaker, settings: Settings, stop_ev
                 continue
             continue
         try:
-            with session_factory.begin() as session:
+            with session_factory() as session:
                 run = session.get(Run, run_id)
                 if run is not None:
                     await execute_run(session, run, settings)
+                    session.commit()
         except Exception:  # no request/body information is logged from a failed run
             LOGGER.exception("Authorization run failed internally: run_id=%s", run_id)
             with session_factory.begin() as session:
                 run = session.get(Run, run_id)
                 if run is not None:
-                    run.status = "FAILED"
+                    from backend.app.workers.queue import fail_run
+                    fail_run(session, run.id)

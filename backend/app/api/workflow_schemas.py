@@ -51,6 +51,56 @@ class ResourceUpdate(ResourceCreate):
     pass
 
 
+class OperationResourceMappingCreate(BaseModel):
+    operation_id: int
+    resource_type_id: int
+    selected: bool = True
+
+
+class OperationResourceMappingUpdate(BaseModel):
+    selected: bool
+
+
+class OperationResourceMappingView(OperationResourceMappingCreate):
+    id: int
+    project_id: int
+
+
+class BatchPlanTargetView(BaseModel):
+    operation_id: int
+    operation_path: str
+    resource_type_id: int
+    resource_type_name: str
+    resource_count: int
+    actor_case_count: int
+
+
+class BatchMatrixView(BaseModel):
+    identity_count: int
+    concrete_target_count: int
+    actor_case_count: int
+    identity_verifications: int
+    owner_baselines: int
+    planned_attempts: int
+    maximum_http_requests: int
+    request_limit: int
+    within_request_limit: bool
+    targets: list[BatchPlanTargetView]
+
+
+class ExecutionSummaryView(BaseModel):
+    planned_attempts: int
+    transport_attempts: int
+    completed_responses: int
+    scope_blocked: int
+    transport_errors: int
+    cancelled_cases: int
+
+
+class BatchRunCreate(BaseModel):
+    target_id: int
+
+
 class PolicyCreate(BaseModel):
     operation_id: int
     resource_type_id: int
@@ -89,3 +139,4 @@ class RunView(BaseModel):
     project_id: int
     status: str
     snapshot: dict
+    execution_summary: ExecutionSummaryView | None = None

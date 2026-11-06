@@ -106,6 +106,19 @@ class Resource(Timestamped, Base):
     path_parameter: Mapped[str] = mapped_column(String(120), nullable=False)
 
 
+class OperationResourceMapping(Timestamped, Base):
+    """Explicit, operator-approved GET operation to resource-type execution scope."""
+
+    __tablename__ = "operation_resource_mappings"
+    __table_args__ = (UniqueConstraint("operation_id", "resource_type_id", name="uq_operation_resource_mapping"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    operation_id: Mapped[int] = mapped_column(ForeignKey("openapi_operations.id"), nullable=False)
+    resource_type_id: Mapped[int] = mapped_column(ForeignKey("resource_types.id"), nullable=False)
+    selected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
 class Policy(Timestamped, Base):
     __tablename__ = "policies"
 
@@ -137,6 +150,35 @@ class RunIdentitySecret(Timestamped, Base):
     identity_id: Mapped[int] = mapped_column(ForeignKey("identities.id"), nullable=False)
     ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
     key_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class RunExecutionStats(Timestamped, Base):
+    """Durable numeric accounting for a batch run; contains no request or credential data."""
+
+    __tablename__ = "run_execution_stats"
+    __table_args__ = (UniqueConstraint("run_id", name="uq_run_execution_stats"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("runs.id"), nullable=False)
+    planned_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    transport_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completed_responses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    scope_blocked: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    transport_errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cancelled_cases: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class BatchCaseClaim(Timestamped, Base):
+    """Additive idempotency ledger for new batch result evidence."""
+
+    __tablename__ = "batch_case_claims"
+    __table_args__ = (UniqueConstraint("run_id", "case_key", name="uq_batch_case_claim"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("runs.id"), nullable=False)
+    case_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    payload_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    run_result_id: Mapped[int | None] = mapped_column(ForeignKey("run_results.id"), unique=True)
 
 
 class Finding(Timestamped, Base):
@@ -172,7 +214,8 @@ class RunResult(Timestamped, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_id: Mapped[int] = mapped_column(ForeignKey("runs.id"), nullable=False)
-    case_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    # The additive BatchCaseClaim ledger, not this historical table, enforces batch uniqueness.
+    case_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
     execution_status: Mapped[str] = mapped_column(String(32), nullable=False)
     authorization_conclusion: Mapped[str] = mapped_column(String(40), nullable=False)
     reason_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

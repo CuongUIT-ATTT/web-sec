@@ -223,6 +223,31 @@ def _reconcile_resource(client: ApiClient, project_id: int, resource_type: dict[
     return client.request("PATCH", f"/api/resources/{_entity_id(existing, 'resource')}", desired)
 
 
+def _reconcile_mapping(
+    client: ApiClient,
+    project_id: int,
+    operation: dict[str, Any],
+    resource_type: dict[str, Any],
+) -> dict[str, Any]:
+    """Reconcile exactly one reviewed GET operation-to-book mapping."""
+    operation_id = _entity_id(operation, "operation")
+    resource_type_id = _entity_id(resource_type, "resource type")
+    candidates = [
+        item for item in client.request("GET", f"/api/projects/{project_id}/operation-resource-mappings")
+        if item.get("operation_id") == operation_id and item.get("resource_type_id") == resource_type_id
+    ]
+    existing = _one(candidates, "mapping for the reviewed GET operation and book type")
+    if existing is None:
+        return client.request(
+            "POST",
+            f"/api/projects/{project_id}/operation-resource-mappings",
+            {"operation_id": operation_id, "resource_type_id": resource_type_id, "selected": True},
+        )
+    if not existing.get("selected"):
+        return client.request("PATCH", f"/api/operation-resource-mappings/{_entity_id(existing, 'mapping')}", {"selected": True})
+    return existing
+
+
 def _reconcile_policy(
     client: ApiClient,
     project_id: int,
@@ -283,6 +308,7 @@ def bootstrap(client: ApiClient, config: BootstrapConfig) -> dict[str, int]:
         operation = client.request("PATCH", f"/api/operations/{_entity_id(operation, 'operation')}", {"selected": True})
     resource_type = _reconcile_resource_type(client, project_id)
     resource = _reconcile_resource(client, project_id, resource_type, user_b, config)
+    mapping = _reconcile_mapping(client, project_id, operation, resource_type)
     _reconcile_policy(client, project_id, operation, resource_type, user_b, "ALLOW")
     _reconcile_policy(client, project_id, operation, resource_type, user_a, "DENY")
     return {
@@ -291,6 +317,7 @@ def bootstrap(client: ApiClient, config: BootstrapConfig) -> dict[str, int]:
         "user_a_id": _entity_id(user_a, "identity"),
         "user_b_id": _entity_id(user_b, "identity"),
         "resource_id": _entity_id(resource, "resource"),
+        "mapping_id": _entity_id(mapping, "mapping"),
     }
 
 

@@ -9,8 +9,13 @@ from sqlalchemy.orm import Session
 
 from backend.app.api.routes import get_session
 from backend.app.api.workflow_schemas import (
+    BatchMatrixView,
+    BatchRunCreate,
     MatrixCaseView,
     OpenApiImport,
+    OperationResourceMappingCreate,
+    OperationResourceMappingUpdate,
+    OperationResourceMappingView,
     OperationUpdate,
     OperationView,
     PolicyCreate,
@@ -27,12 +32,14 @@ from backend.app.api.workflow_schemas import (
 )
 from backend.app.core.auth import require_admin, require_csrf
 from backend.app.domain.contracts import PolicyDecision, RunStatus
-from backend.app.persistence.models import Finding, FindingReproduction, Identity, IdentitySecret, OpenApiOperation, Policy, Project, Resource, ResourceType, Run, RunIdentitySecret, RunResult, Target
+from backend.app.persistence.models import Finding, FindingReproduction, Identity, IdentitySecret, OpenApiOperation, OperationResourceMapping, Policy, Project, Resource, ResourceType, Run, RunExecutionStats, RunIdentitySecret, RunResult, Target
+from backend.app.workers.queue import request_cancellation
 from backend.app.scanner.classification.json_pointer import JsonPointerError, validate_pointer
 from backend.app.scanner.classification.policy import PolicyRule, resolve_policy
 from backend.app.scanner.matrix.generator import generate_cases
 from backend.app.scanner.openapi.parser import OpenApiError, parse_openapi_json
-from backend.app.services.run_snapshot import snapshot_run
+from backend.app.services.batch_plan import BatchPlan, BatchPlanError, build_batch_plan
+from backend.app.services.run_snapshot import snapshot_batch_run, snapshot_run
 
 router = APIRouter(prefix="/api", tags=["workflow"])
 
@@ -186,6 +193,145 @@ def update_resource(resource_id: int, payload: ResourceUpdate, _: None = Depends
     return resource
 
 
+def mapping_view(mapping: OperationResourceMapping) -> dict[str, object]:
+    return {
+        "id": mapping.id,
+        "project_id": mapping.project_id,
+        "operation_id": mapping.operation_id,
+        "resource_type_id": mapping.resource_type_id,
+        "selected": mapping.selected,
+    }
+
+
+def _mapping_entities(session: Session, project_id: int, operation_id: int, resource_type_id: int) -> tuple[OpenApiOperation, ResourceType]:
+    operation = session.get(OpenApiOperation, operation_id)
+    resource_type = session.get(ResourceType, resource_type_id)
+    if operation is None or resource_type is None or operation.project_id != project_id or resource_type.project_id != project_id:
+        raise HTTPException(status_code=422, detail="Operation và resource type phải thuộc cùng dự án.")
+    if operation.method != "GET":
+        raise HTTPException(status_code=422, detail="Mapping batch chỉ cho phép operation GET.")
+    return operation, resource_type
+
+
+def _validate_mapping_resources(session: Session, operation: OpenApiOperation, resource_type: ResourceType) -> None:
+    resources = list(session.scalars(select(Resource).where(Resource.resource_type_id == resource_type.id)))
+    if not resources or any("{" + resource.path_parameter + "}" not in operation.path for resource in resources):
+        raise HTTPException(status_code=422, detail="Mapping cần ít nhất một resource có path parameter tương thích với operation.")
+
+
+@router.get("/projects/{project_id}/operation-resource-mappings", response_model=list[OperationResourceMappingView])
+def list_operation_resource_mappings(project_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
+    require_project(session, project_id)
+    return [mapping_view(mapping) for mapping in session.scalars(select(OperationResourceMapping).where(OperationResourceMapping.project_id == project_id).order_by(OperationResourceMapping.id))]
+
+
+@router.post("/projects/{project_id}/operation-resource-mappings", response_model=OperationResourceMappingView, status_code=status.HTTP_201_CREATED)
+def create_operation_resource_mapping(project_id: int, payload: OperationResourceMappingCreate, _: None = Depends(require_csrf), session: Session = Depends(get_session)) -> dict[str, object]:
+    require_project(session, project_id)
+    operation, resource_type = _mapping_entities(session, project_id, payload.operation_id, payload.resource_type_id)
+    if payload.selected:
+        _validate_mapping_resources(session, operation, resource_type)
+    mapping = OperationResourceMapping(project_id=project_id, **payload.model_dump())
+    session.add(mapping)
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Mapping operation và resource type đã tồn tại.") from error
+    session.refresh(mapping)
+    return mapping_view(mapping)
+
+
+@router.patch("/operation-resource-mappings/{mapping_id}", response_model=OperationResourceMappingView)
+def update_operation_resource_mapping(mapping_id: int, payload: OperationResourceMappingUpdate, _: None = Depends(require_csrf), session: Session = Depends(get_session)) -> dict[str, object]:
+    mapping = session.get(OperationResourceMapping, mapping_id)
+    if mapping is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy mapping operation và resource type.")
+    operation, resource_type = _mapping_entities(session, mapping.project_id, mapping.operation_id, mapping.resource_type_id)
+    if payload.selected:
+        _validate_mapping_resources(session, operation, resource_type)
+    mapping.selected = payload.selected
+    session.commit()
+    session.refresh(mapping)
+    return mapping_view(mapping)
+
+
+def _build_project_batch_plan(session: Session, project_id: int, target_id: int) -> BatchPlan:
+    target = session.get(Target, target_id)
+    if target is None or target.project_id != project_id:
+        raise HTTPException(status_code=422, detail="Target phải thuộc dự án.")
+    identities = list(session.scalars(select(Identity).where(Identity.project_id == project_id)))
+    identity_secrets = list(session.scalars(select(IdentitySecret).join(Identity).where(Identity.project_id == project_id)))
+    mappings = list(session.scalars(select(OperationResourceMapping).where(OperationResourceMapping.project_id == project_id, OperationResourceMapping.selected.is_(True))))
+    operations = list(session.scalars(select(OpenApiOperation).where(OpenApiOperation.project_id == project_id)))
+    resource_types = list(session.scalars(select(ResourceType).where(ResourceType.project_id == project_id)))
+    resources = list(session.scalars(select(Resource).join(ResourceType).where(ResourceType.project_id == project_id)))
+    policies = list(session.scalars(select(Policy).join(OpenApiOperation).where(OpenApiOperation.project_id == project_id)))
+    try:
+        return build_batch_plan(
+            target=target,
+            identities=identities,
+            identity_secrets=identity_secrets,
+            mappings=mappings,
+            operations=operations,
+            resource_types=resource_types,
+            resources=resources,
+            policies=policies,
+        )
+    except BatchPlanError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.get("/projects/{project_id}/batch-matrix", response_model=BatchMatrixView)
+def get_batch_matrix(project_id: int, target_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> dict[str, object]:
+    require_project(session, project_id)
+    plan = _build_project_batch_plan(session, project_id, target_id)
+    grouped: dict[tuple[int, int], dict[str, object]] = {}
+    for item in plan.targets:
+        key = (item.operation.id, item.resource_type.id)
+        row = grouped.setdefault(key, {
+            "operation_id": item.operation.id,
+            "operation_path": item.operation.path,
+            "resource_type_id": item.resource_type.id,
+            "resource_type_name": item.resource_type.name,
+            "resource_count": 0,
+            "actor_case_count": 0,
+        })
+        row["resource_count"] = int(row["resource_count"]) + 1
+        row["actor_case_count"] = int(row["actor_case_count"]) + len(plan.identities)
+    return {
+        "identity_count": len(plan.identities),
+        "concrete_target_count": len(plan.targets),
+        "actor_case_count": plan.actor_case_count,
+        "identity_verifications": plan.identity_verifications,
+        "owner_baselines": plan.owner_baselines,
+        "planned_attempts": plan.planned_attempts,
+        "maximum_http_requests": plan.maximum_http_requests,
+        "request_limit": plan.target.request_limit,
+        "within_request_limit": plan.within_request_limit,
+        "targets": list(grouped.values()),
+    }
+
+
+@router.post("/projects/{project_id}/batch-runs", response_model=RunView, status_code=status.HTTP_201_CREATED)
+def create_batch_run(project_id: int, payload: BatchRunCreate, _: None = Depends(require_csrf), session: Session = Depends(get_session)) -> dict[str, object]:
+    require_project(session, project_id)
+    plan = _build_project_batch_plan(session, project_id, payload.target_id)
+    if not plan.within_request_limit:
+        raise HTTPException(status_code=422, detail="Batch vượt quá giới hạn request của target; hãy tăng giới hạn hoặc thu hẹp mapping đã bật.")
+    secrets_by_identity = {secret.identity_id: secret for secret in session.scalars(select(IdentitySecret).join(Identity).where(Identity.project_id == project_id))}
+    run = Run(project_id=project_id, status=RunStatus.QUEUED, snapshot=snapshot_batch_run(plan))
+    session.add(run)
+    session.flush()
+    for identity in plan.identities:
+        secret = secrets_by_identity[identity.id]
+        session.add(RunIdentitySecret(run_id=run.id, identity_id=identity.id, ciphertext=secret.ciphertext, key_version=secret.key_version))
+    session.add(RunExecutionStats(run_id=run.id, planned_attempts=plan.planned_attempts))
+    session.commit()
+    session.refresh(run)
+    return _run_view(session, run)
+
+
 @router.post("/projects/{project_id}/policies", response_model=PolicyView, status_code=status.HTTP_201_CREATED)
 def create_policy(project_id: int, payload: PolicyCreate, _: None = Depends(require_csrf), session: Session = Depends(get_session)) -> dict[str, object]:
     require_project(session, project_id)
@@ -330,10 +476,28 @@ def create_run(project_id: int, payload: RunCreate, _: None = Depends(require_cs
     return run
 
 
+def _run_view(session: Session, run: Run) -> dict[str, object]:
+    stats = session.scalar(select(RunExecutionStats).where(RunExecutionStats.run_id == run.id))
+    return {
+        "id": run.id,
+        "project_id": run.project_id,
+        "status": run.status,
+        "snapshot": run.snapshot,
+        "execution_summary": None if stats is None else {
+            "planned_attempts": stats.planned_attempts,
+            "transport_attempts": stats.transport_attempts,
+            "completed_responses": stats.completed_responses,
+            "scope_blocked": stats.scope_blocked,
+            "transport_errors": stats.transport_errors,
+            "cancelled_cases": stats.cancelled_cases,
+        },
+    }
+
+
 @router.get("/projects/{project_id}/runs", response_model=list[RunView])
-def list_runs(project_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[Run]:
+def list_runs(project_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
     require_project(session, project_id)
-    return list(session.scalars(select(Run).where(Run.project_id == project_id).order_by(Run.id.desc())))
+    return [_run_view(session, run) for run in session.scalars(select(Run).where(Run.project_id == project_id).order_by(Run.id.desc()))]
 
 
 @router.get("/runs/{run_id}/results")
@@ -375,8 +539,5 @@ def cancel_run(run_id: int, _: None = Depends(require_csrf), session: Session = 
     run = session.get(Run, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy.")
-    if run.status == RunStatus.QUEUED:
-        run.status = RunStatus.CANCELLED
-    elif run.status == RunStatus.RUNNING:
-        run.status = RunStatus.CANCEL_REQUESTED
+    request_cancellation(session, run_id)
     session.commit()

@@ -30,6 +30,7 @@ class FakeConfigurationApi:
         self.resource_types: list[dict[str, Any]] = []
         self.resources: list[dict[str, Any]] = []
         self.policies: list[dict[str, Any]] = []
+        self.mappings: list[dict[str, Any]] = []
         self.calls: list[tuple[str, str, dict[str, Any] | None]] = []
         self._next_id = 1
 
@@ -93,6 +94,14 @@ class FakeConfigurationApi:
             item = self._by_id(self.resources, path)
             item.update(payload or {})
             return item
+        if method == "GET" and path.endswith("/operation-resource-mappings"):
+            return self.mappings
+        if method == "POST" and path.endswith("/operation-resource-mappings"):
+            return self._new(self.mappings, {"project_id": int(path.split("/")[3]), **(payload or {})})
+        if method == "PATCH" and path.startswith("/api/operation-resource-mappings/"):
+            item = self._by_id(self.mappings, path)
+            item.update(payload or {})
+            return item
         if method == "GET" and path.endswith("/policies"):
             return self.policies
         if method == "POST" and path.endswith("/policies"):
@@ -144,10 +153,12 @@ def test_bootstrap_reconciles_without_duplicates_or_run(reviewed_openapi: Path) 
     assert first == second
     assert len(api.projects) == len(api.targets) == len(api.resource_types) == len(api.resources) == 1
     assert len(api.identities) == len(api.policies) == 2
-    assert len(api.operations) == 1
+    assert len(api.operations) == len(api.mappings) == 1
+    assert api.mappings[0]["selected"] is True
     assert api.resources[0]["owner_identity_id"] == next(item["id"] for item in api.identities if item["display_name"] == "userB")
     assert {item["decision"] for item in api.policies} == {"ALLOW", "DENY"}
     assert all("/runs" not in path for _, path, _ in api.calls)
+    assert all("/batch-runs" not in path for _, path, _ in api.calls)
     assert all("/connection-test" not in path for _, path, _ in api.calls)
     assert all("/verify" not in path for _, path, _ in api.calls)
 

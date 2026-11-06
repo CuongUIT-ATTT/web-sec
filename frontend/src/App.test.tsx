@@ -15,6 +15,8 @@ vi.mock("./api", () => ({
     resourceTypes: vi.fn().mockResolvedValue([]),
     resources: vi.fn().mockResolvedValue([]),
     policies: vi.fn().mockResolvedValue([]),
+    operationResourceMappings: vi.fn().mockResolvedValue([]),
+    batchMatrix: vi.fn().mockResolvedValue({ identity_count: 0, concrete_target_count: 0, actor_case_count: 0, identity_verifications: 0, owner_baselines: 0, planned_attempts: 0, maximum_http_requests: 0, request_limit: 100, within_request_limit: true, targets: [] }),
     runs: vi.fn().mockResolvedValue([]),
     findings: vi.fn().mockResolvedValue([]),
   },
@@ -33,6 +35,8 @@ beforeEach(() => {
   mockedApi.resourceTypes.mockResolvedValue([]);
   mockedApi.resources.mockResolvedValue([]);
   mockedApi.policies.mockResolvedValue([]);
+  mockedApi.operationResourceMappings.mockResolvedValue([]);
+  mockedApi.batchMatrix.mockResolvedValue({ identity_count: 0, concrete_target_count: 0, actor_case_count: 0, identity_verifications: 0, owner_baselines: 0, planned_attempts: 0, maximum_http_requests: 0, request_limit: 100, within_request_limit: true, targets: [] });
   mockedApi.runs.mockResolvedValue([]);
   mockedApi.findings.mockResolvedValue([]);
 });

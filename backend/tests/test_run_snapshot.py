@@ -1,5 +1,6 @@
-from backend.app.persistence.models import Identity, Policy, Resource, ResourceType, Target
-from backend.app.services.run_snapshot import snapshot_run
+from backend.app.persistence.models import Identity, IdentitySecret, OpenApiOperation, OperationResourceMapping, Policy, Resource, ResourceType, Target
+from backend.app.services.batch_plan import build_batch_plan
+from backend.app.services.run_snapshot import snapshot_batch_run, snapshot_run
 
 
 def test_run_snapshot_is_allowlisted_and_excludes_credentials() -> None:
@@ -14,4 +15,25 @@ def test_run_snapshot_is_allowlisted_and_excludes_credentials() -> None:
     assert snapshot["target"]["base_url"] == "http://127.0.0.1:5000"
     assert snapshot["target"]["verification_path"] == "/me"
     assert "ciphertext" not in repr(snapshot)
+    assert "token" not in repr(snapshot).lower()
+
+
+def test_batch_snapshot_contains_exact_scope_and_no_credentials() -> None:
+    target = Target(id=1, project_id=2, base_url="http://127.0.0.1:5000", timeout_seconds=5, request_limit=50, verification_path="/me")
+    identity = Identity(id=5, project_id=2, display_name="Alice", role="reader", principal_pointer="/data/user", expected_principal="alice")
+    secret = IdentitySecret(identity_id=5, ciphertext="credential-ciphertext", key_version=1, fingerprint="a" * 64)
+    operation = OpenApiOperation(id=7, project_id=2, operation_key="getBook", method="GET", path="/books/{id}", selected=True)
+    resource_type = ResourceType(id=4, project_id=2, name="book", resource_id_pointer="/data/id", restricted_pointers=["/data/secret"])
+    resource = Resource(id=3, resource_type_id=4, external_id="book-a", owner_identity_id=5, path_parameter="id")
+    mapping = OperationResourceMapping(id=8, project_id=2, operation_id=7, resource_type_id=4, selected=True)
+    policy = Policy(id=6, version=2, operation_id=7, resource_type_id=4, identity_id=5, role=None, resource_id=None, decision="ALLOW")
+
+    plan = build_batch_plan(target=target, identities=[identity], identity_secrets=[secret], mappings=[mapping], operations=[operation], resource_types=[resource_type], resources=[resource], policies=[policy])
+    snapshot = snapshot_batch_run(plan)
+
+    assert snapshot["run_kind"] == "BATCH_ALL_SELECTED"
+    assert snapshot["request_plan"]["planned_attempts"] == 3
+    assert snapshot["request_plan"]["maximum_http_requests"] == 3
+    assert snapshot["targets"][0]["operation"]["path"] == "/books/{id}"
+    assert "credential-ciphertext" not in repr(snapshot)
     assert "token" not in repr(snapshot).lower()

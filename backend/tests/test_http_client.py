@@ -84,3 +84,30 @@ async def test_client_marks_oversized_body_without_storing_content(monkeypatch, 
     assert observation.execution_status == ExecutionStatus.BODY_TRUNCATED
     assert observation.json_body is None
     assert observation.body_length == 32
+
+
+@pytest.mark.asyncio
+async def test_redirect_is_observed_once_and_never_followed(monkeypatch, settings: Settings) -> None:
+    calls = 0
+
+    class Client:
+        def __init__(self, **kwargs):
+            assert kwargs["follow_redirects"] is False
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return None
+        def stream(self, method, url, headers):
+            nonlocal calls
+            calls += 1
+            return Response()
+
+    class Response:
+        status_code = 302
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return None
+        async def aiter_bytes(self): yield b"{}"
+
+    monkeypatch.setattr(http_client.httpx, "AsyncClient", Client)
+    observation = await http_client.get_json(base_url="http://127.0.0.1:5000", api_path="/books/1", bearer_token=None, settings=settings)
+    assert observation.execution_status == ExecutionStatus.COMPLETED_RESPONSE
+    assert observation.status_code == 302
+    assert calls == 1
