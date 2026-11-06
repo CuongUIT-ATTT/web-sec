@@ -36,6 +36,29 @@ class PipelineTests(unittest.TestCase):
         run_pipeline.assert_not_called()
         self.assertEqual(report["findings"], findings)
 
+    def test_validate_inputs_auto_filters_unconfigured_ownership_roles(self):
+        all_fixtures = [
+            {"resource_type": "book", "resource_id": "userA-book", "owner_role": "userA"},
+            {"resource_type": "book", "resource_id": "userB-book", "owner_role": "userB"},
+            {"resource_type": "user_profile", "resource_id": "userC", "owner_role": "userC"},
+            {"resource_type": "user_profile", "resource_id": "admin2", "owner_role": "admin2"},
+        ]
+        roles = {
+            "admin": {"username": "admin", "token": "Bearer " + "local-token-adm"},
+            "userA": {"username": "userA", "token": "Bearer " + "local-token-a"},
+            "userB": {"username": "userB", "token": "Bearer " + "local-token-b"},
+        }
+        with patch("authz_lab.read_only.pipeline.load_spec", return_value={}), patch(
+            "authz_lab.read_only.pipeline.extract_endpoints", return_value=[{"path": "/books/v1/{book_title}"}]
+        ), patch("authz_lab.read_only.pipeline.load_roles_config", return_value=roles), patch(
+            "authz_lab.read_only.pipeline.load_ownership", return_value=all_fixtures
+        ):
+            report = pipeline.validate_inputs(Path("spec.json"), Path("roles.json"), Path("ownership.csv"))
+
+        self.assertEqual(report["role_names"], ["admin", "userA", "userB"])
+        self.assertEqual(report["fixture_count"], 2)
+        self.assertEqual(report["total_ownership_rows"], 4)
+
 
 if __name__ == "__main__":
     unittest.main()

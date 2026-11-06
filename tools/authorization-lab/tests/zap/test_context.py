@@ -803,6 +803,21 @@ class ImportedContextAttestationTests(unittest.TestCase):
             with self.assertRaises(ZapContextError):
                 verify_imported_users("", "7", attestation)
 
+    def test_supports_five_role_reviewed_user_set(self):
+        attestation = {"reviewed_users": ["admin", "admin2", "userA", "userB", "userC"]}
+        valid = {
+            "usersList": [
+                {"id": "1", "name": "admin", "enabled": "true"},
+                {"id": "2", "name": "admin2", "enabled": "true"},
+                {"id": "3", "name": "userA", "enabled": "true"},
+                {"id": "4", "name": "userB", "enabled": "true"},
+                {"id": "5", "name": "userC", "enabled": "true"},
+            ]
+        }
+        with patch("authz_lab.zap.context._zap_api", return_value=valid):
+            users = verify_imported_users("", "7", attestation)
+        self.assertEqual([user["name"] for user in users], ["admin", "admin2", "userA", "userB", "userC"])
+
 
 if __name__ == "__main__":
     unittest.main()

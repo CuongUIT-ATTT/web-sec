@@ -162,6 +162,37 @@ class BuildWeek4ComparisonTests(unittest.TestCase):
         self.assertEqual(comparison["owasp_zap"]["finding_count"], 10)
         self.assertEqual(comparison["owasp_zap"]["unauthorized_access_count"], 1)
 
+    def test_dynamically_reads_case_and_bola_counts_from_rerun_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            timing_file = root / "week3_script_timing.json"
+            verif_file = root / "week3_manual_verification.json"
+            timing_file.write_text(
+                json.dumps({"elapsed_ms": 5012.3, "case_count": 32}),
+                encoding="utf-8",
+            )
+            verif_file.write_text(
+                json.dumps(
+                    [
+                        *([{"outcome": "CONFIRMED_USER_TO_USER_BOLA", "access_direction": "USER_TO_USER"}] * 4),
+                        *([{"outcome": "CONFIRMED_USER_TO_ADMIN_BOLA", "access_direction": "USER_TO_ADMIN"}] * 3),
+                        *([{"outcome": "POLICY_DEPENDENT_ADMIN_ACCESS", "access_direction": "ADMIN_TO_USER"}] * 4),
+                        {"outcome": "POLICY_DEPENDENT_ADMIN_ACCESS", "access_direction": "ADMIN_TO_ADMIN"},
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            comparison = build_final_comparison(
+                bfla_findings=None,
+                zap_report=None,
+                script_timing_path=timing_file,
+            )
+        self.assertEqual(comparison["comparison_scope"]["script_total_cases"], 32)
+        self.assertEqual(comparison["custom_script"]["case_count"], 32)
+        self.assertEqual(comparison["custom_script"]["confirmed_user_to_user_bola"], 4)
+        self.assertEqual(comparison["custom_script"]["confirmed_user_to_admin_bola"], 3)
+        self.assertEqual(comparison["custom_script"]["policy_dependent_admin_access"], 5)
+
 
 class WriteComparisonTests(unittest.TestCase):
     """Written comparison must pass redaction checks."""

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .manifest import BflaManifestError, expected_project_name, validate_run_directory, validate_run_id, write_manifest
 from .preflight import preflight
-from .runner import BflaExecutionError, execute, prepare
+from .runner import BflaExecutionError, execute, execute_extended, prepare
 from .teardown import teardown
 
 PROJECT_ROOT = Path.cwd().resolve()
@@ -53,6 +53,11 @@ def build_parser() -> argparse.ArgumentParser:
     _add_run_arguments(prepare_parser)
     execute_parser = subcommands.add_parser("execute", help="Run only the two declared delete controls.")
     _add_run_arguments(execute_parser)
+    extended_parser = subcommands.add_parser(
+        "execute-extended",
+        help="Run Write-BOLA vs HTTP-204 False Positive and Mass Assignment checks on the disposable instance.",
+    )
+    _add_run_arguments(extended_parser)
     teardown_parser = subcommands.add_parser("teardown", help="Destroy only the matching disposable Compose project and volume.")
     _add_run_arguments(teardown_parser, include_compose=True)
     return parser
@@ -79,6 +84,10 @@ def main(argv: list[str] | None = None) -> int:
             result = execute(args.run_id, project, run_dir, args.results_root)
             print(f"Disposable BFLA execution completed with outcome {result['outcome']}.")
             return 10 if result["outcome"] == "BFLA_CONFIRMED_DESTRUCTIVE" else 0 if result["outcome"] == "DENIED_CONTROL" else 2
+        if args.command == "execute-extended":
+            result = execute_extended(args.run_id, project, run_dir, args.results_root)
+            print(f"Disposable extended state-changing execution completed for run {result['run_id']}.")
+            return 0
         receipt = teardown(args.run_id, project, run_dir, args.compose_file, args.results_root)
         print(f"Disposable teardown completed: {receipt['status']}.")
         return 0

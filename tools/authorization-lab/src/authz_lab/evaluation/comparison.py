@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from authz_lab.common import write_redacted_json
+from authz_lab.common import read_json, write_redacted_json
 from authz_lab.evaluation.timing import TimingEvidence
 
 
@@ -97,12 +97,47 @@ def _parse_manual_worksheet(path: str | Path) -> dict[str, Any]:
     }
 
 
+def _load_verification_counts(timing_source: Path | None) -> tuple[int, int, int]:
+    """Read directional BOLA counts from verification artifact adjacent to timing_source."""
+    confirmed_bola_count = 2
+    confirmed_user_to_admin_bola = 0
+    policy_dependent_admin_access = 0
+    if timing_source is None:
+        return confirmed_bola_count, confirmed_user_to_admin_bola, policy_dependent_admin_access
+    parent = timing_source.parent
+    for candidate_name in ("manual_verification.json", "week3_manual_verification.json"):
+        verification_file = parent / candidate_name
+        if not verification_file.is_file() and parent.parent != parent:
+            verification_file = parent.parent / candidate_name
+        if verification_file.is_file():
+            verif_records = read_json(verification_file)
+            if isinstance(verif_records, list):
+                confirmed_bola_count = sum(
+                    item.get("outcome") == "CONFIRMED_USER_TO_USER_BOLA"
+                    for item in verif_records
+                    if isinstance(item, dict)
+                )
+                confirmed_user_to_admin_bola = sum(
+                    item.get("outcome") == "CONFIRMED_USER_TO_ADMIN_BOLA"
+                    for item in verif_records
+                    if isinstance(item, dict)
+                )
+                policy_dependent_admin_access = sum(
+                    item.get("outcome") == "POLICY_DEPENDENT_ADMIN_ACCESS"
+                    for item in verif_records
+                    if isinstance(item, dict)
+                )
+            break
+    return confirmed_bola_count, confirmed_user_to_admin_bola, policy_dependent_admin_access
+
+
 def build_final_comparison(
     bfla_findings: dict[str, Any] | None,
     zap_report: dict[str, Any] | None,
     manual_worksheet_path: str | Path = "results/manual_verification_worksheet.md",
     *,
     timing_evidence: TimingEvidence | None = None,
+    script_timing_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build the final three-method comparison for final.
 
@@ -116,19 +151,48 @@ def build_final_comparison(
         Path to the manual worksheet markdown file.
     timing_evidence : TimingEvidence or None
         Validated automated pipeline timing, if a timing artifact is available.
+    script_timing_path : path or None
+        Optional legacy timing path fallback.
     """
     # ── custom script column ──
+    measured_case_count = 12
+    confirmed_bola_count = 2
+    confirmed_user_to_admin_bola = 0
+    policy_dependent_admin_access = 0
+
+    if timing_evidence is None and script_timing_path and Path(script_timing_path).is_file():
+        timing_path_obj = Path(script_timing_path)
+        timing = read_json(timing_path_obj)
+        case_count_val = timing.get("case_count") if isinstance(timing.get("case_count"), int) else 12
+        timing_evidence = TimingEvidence(
+            status="AVAILABLE",
+            source=timing_path_obj,
+            elapsed_ms=timing.get("elapsed_ms"),
+            case_count=case_count_val,
+        )
+
+    if timing_evidence is not None and timing_evidence.status == "AVAILABLE":
+        if isinstance(timing_evidence.case_count, int):
+            measured_case_count = timing_evidence.case_count
+        (
+            confirmed_bola_count,
+            confirmed_user_to_admin_bola,
+            policy_dependent_admin_access,
+        ) = _load_verification_counts(timing_evidence.source)
+
     script_data: dict[str, Any] = {
         "status": "TIMING_NOT_AVAILABLE",
-        "case_count": 12,
-        "confirmed_user_to_user_bola": 2,
+        "case_count": measured_case_count,
+        "confirmed_user_to_user_bola": confirmed_bola_count,
+        "confirmed_user_to_admin_bola": confirmed_user_to_admin_bola,
+        "policy_dependent_admin_access": policy_dependent_admin_access,
         "hidden_200_data_exposure": "Yes; fresh owner-baseline secret comparison.",
         "elapsed_ms": None,
     }
     if timing_evidence is not None and timing_evidence.status == "AVAILABLE":
         script_data.update(
             status="MEASURED",
-            case_count=timing_evidence.case_count,
+            case_count=measured_case_count,
             elapsed_ms=timing_evidence.elapsed_ms,
             timing_source=str(timing_evidence.source),
         )
@@ -191,13 +255,13 @@ def build_final_comparison(
     return {
         "comparison_scope": {
             "target": "http://127.0.0.1:5000",
-            "script_total_cases": 12,
+            "script_total_cases": measured_case_count,
             "manual_sample_cases": 7,
             "bfla_disposable_target": "http://127.0.0.1:5003",
             "normalization_note": (
-                "Finding totals must be compared on the same selected "
-                "endpoint subset; 12 automated cases, 7 manual samples, "
-                "and BFLA disposable cases are not directly interchangeable."
+                f"Finding totals must be compared on the same selected "
+                f"endpoint subset; {measured_case_count} automated cases, 7 manual samples, "
+                f"and BFLA disposable cases are not directly interchangeable."
             ),
         },
         "custom_script": script_data,
@@ -215,3 +279,6 @@ def write_comparison(
     path = Path(output_path)
     write_redacted_json(path, comparison)
     return path
+
+
+build_week4_comparison = build_final_comparison

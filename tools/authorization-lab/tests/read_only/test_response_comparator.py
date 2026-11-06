@@ -45,6 +45,23 @@ class ResponseComparatorTests(unittest.TestCase):
         }
         self.assertEqual(analyze_all([result])[0]["verdict"], "OBSERVATION")
 
+    def test_confirms_debug_endpoint_credential_exposure(self):
+        anon_debug = {
+            "operation_id": "api_views.users.debug",
+            "risk_category": "EXCESSIVE_DATA_EXPOSURE",
+            "scenario": "anonymous",
+            "status_code": 200,
+            "response_json": {"users": [{"username": "admin", "password": "secret-password", "admin": True}]},
+        }
+        analyzed = analyze_all([anon_debug])[0]
+        self.assertEqual(analyzed["verdict"], "CONFIRMED")
+        self.assertEqual(analyzed["evidence_paths"], ["$.users[*].password"])
+        self.assertEqual(
+            analyzed["response_json"],
+            {"user_record_count": 1, "exposed_field_names": ["admin", "password", "username"]},
+        )
+        self.assertNotIn("secret-password", str(analyzed))
+
 
 if __name__ == "__main__":
     unittest.main()

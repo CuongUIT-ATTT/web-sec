@@ -49,6 +49,18 @@ def _is_privileged(path: str, detail: dict[str, Any]) -> bool:
     return any(keyword in searchable for keyword in ("admin", "privilege", "role", "internal"))
 
 
+def _is_excessive_data_exposure(path: str, detail: dict[str, Any]) -> bool:
+    searchable = " ".join(
+        [
+            path,
+            str(detail.get("operationId", "")),
+            str(detail.get("summary", "")),
+            str(detail.get("description", "")),
+        ]
+    ).lower()
+    return any(keyword in searchable for keyword in ("debug", "_debug", "dump"))
+
+
 def extract_endpoints(spec: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract OpenAPI operations and conservative test-candidate metadata."""
     endpoints: list[dict[str, Any]] = []
@@ -72,6 +84,7 @@ def extract_endpoints(spec: dict[str, Any]) -> list[dict[str, Any]]:
             requires_auth = _requires_auth(detail, global_security)
             state_changing = normalized_method not in SAFE_METHODS
             privileged = _is_privileged(path, detail)
+            excessive_exposure = _is_excessive_data_exposure(path, detail) and not state_changing
             object_level = bool(path_params)
 
             endpoint = {
@@ -86,7 +99,10 @@ def extract_endpoints(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "state_changing": state_changing,
                 "forbidden": path in FORBIDDEN_PATHS,
                 "is_bola_candidate": object_level and not state_changing,
+                "is_write_bola_candidate": object_level and state_changing and normalized_method in {"PUT", "PATCH"},
                 "is_bfla_candidate": privileged,
+                "is_excessive_data_exposure_candidate": excessive_exposure,
+                "is_mass_assignment_candidate": state_changing and normalized_method == "POST" and "register" in path.lower(),
                 "public_object_read": object_level and not requires_auth and not state_changing,
                 "execution_note": (
                     "Never execute: it resets the lab database."

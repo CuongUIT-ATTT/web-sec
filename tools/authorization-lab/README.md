@@ -4,9 +4,9 @@
 
 ## Ranh giới an toàn
 
-- `vampi-authz-lab` chỉ đọc và chỉ chấp nhận target VAmPI cục bộ cố định `http://127.0.0.1:5000`; công cụ từ chối các method làm thay đổi trạng thái và `/createdb`.
+- `vampi-authz-lab` chỉ đọc và chỉ chấp nhận target VAmPI cục bộ cố định `http://127.0.0.1:5000`; công cụ từ chối các method làm thay đổi trạng thái và `/createdb`. Hỗ trợ tự động lọc `ownership.csv` theo danh sách role trong `roles_config.json` (ví dụ bộ 5 vai trò `admin`, `admin2`, `userA`, `userB`, `userC` hoặc bộ 3 vai trò `admin`, `userA`, `userB`), phân loại BOLA 4 chiều và kiểm chứng `GET /users/v1/_debug` (API3 Excessive Data Exposure) không lưu giá trị mật khẩu.
 - `vampi-authz-evaluate` sử dụng bằng chứng đã được tạo và chỉ chạy đánh giá ZAP có giới hạn khi đã cung cấp các đầu vào vận hành được rà soát.
-- `vampi-bfla-disposable` là workflow destructive riêng biệt, được gọi một cách tường minh. Công cụ này cố định vào target dùng một lần bị ràng buộc bởi manifest tại `127.0.0.1:5003`, dùng [`deploy/labs/vampi-bfla-disposable.compose.yaml`](../../deploy/labs/vampi-bfla-disposable.compose.yaml), và không bao giờ vận hành trên lab dùng chung.
+- `vampi-bfla-disposable` là workflow destructive riêng biệt, được gọi một cách tường minh. Công cụ này cố định vào target dùng một lần bị ràng buộc bởi manifest tại `127.0.0.1:5003`, dùng [`deploy/labs/vampi-bfla-disposable.compose.yaml`](../../deploy/labs/vampi-bfla-disposable.compose.yaml), và không bao giờ vận hành trên lab dùng chung. Lệnh `execute` mặc định giữ nguyên phạm vi `DELETE /users/v1/{username}`; lệnh opt-in `execute-extended` kiểm chứng Write-BOLA (`PUT .../password`), False Positive HTTP 204 (`PUT .../email`) và Mass Assignment (`POST /users/v1/register`).
 - `roles_config.json`, các tệp ZAP Context riêng tư, kết quả, `.bfla-runs` và database là dữ liệu cục bộ/được ignore. Không thêm chúng vào Git.
 
 ## Cài đặt và xác thực
