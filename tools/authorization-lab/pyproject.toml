@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "authz-lab"
+version = "0.1.0"
+description = "Safe local VAmPI authorization-lab tooling"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Local lab project"}]
+
+[project.scripts]
+vampi-authz-lab = "authz_lab.cli:main"
+vampi-bfla-disposable = "authz_lab.disposable.cli:main"
+vampi-authz-evaluate = "authz_lab.evaluation.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+authz_lab = ["fixtures/*.json", "fixtures/*.csv", "fixtures/zap/*.json"]
