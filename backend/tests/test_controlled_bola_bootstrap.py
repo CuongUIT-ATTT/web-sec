@@ -202,6 +202,26 @@ def test_health_smoke_uses_only_get_health(monkeypatch: pytest.MonkeyPatch, revi
     assert timeout == 5
 
 
+def test_main_forwards_health_smoke_without_exposing_tokens(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], reviewed_openapi: Path) -> None:
+    config = configuration(reviewed_openapi)
+    monkeypatch.setattr(bootstrap_module.BootstrapConfig, "from_environment", classmethod(lambda cls, environ: config))
+    monkeypatch.setattr(bootstrap_module, "LocalWebApi", lambda base_url, admin_password: object())
+    monkeypatch.setattr(
+        bootstrap_module,
+        "bootstrap",
+        lambda client, configured: {"project_id": 1, "target_id": 2, "resource_id": 3, "user_a_id": 4, "user_b_id": 5},
+    )
+    monkeypatch.setattr(bootstrap_module, "health_smoke", lambda configured: 204)
+
+    assert bootstrap_module.main(["--health-smoke"], {}) == 0
+
+    captured = capsys.readouterr()
+    assert "Health smoke: HTTP 204" in captured.out
+    assert config.admin_password not in captured.out + captured.err
+    assert config.user_a_token not in captured.out + captured.err
+    assert config.user_b_token not in captured.out + captured.err
+
+
 def test_main_does_not_print_tokens_when_configuration_is_incomplete(capsys: pytest.CaptureFixture[str]) -> None:
     exit_code = bootstrap_module.main([], {"AUTHZ_ADMIN_PASSWORD": "admin-secret", "BOLA_USER_A_TOKEN": "user-a-token-secret"})
 

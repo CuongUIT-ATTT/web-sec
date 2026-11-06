@@ -36,7 +36,7 @@ Không còn package/source runtime theo `week1`–`week4`.
 - Kết quả chỉ giữ metadata/evidence allowlisted, không giữ full response body, header, cookie hay password.
 - `execution_status`, `authorization_conclusion`, `reason_code` là ba lớp độc lập. HTTP 4xx/5xx có response vẫn là `COMPLETED_RESPONSE` và body đủ điều kiện vẫn có thể được đánh giá disclosure.
 
-Hướng dẫn vận hành, lệnh, fixtures và quy tắc an toàn của lab nằm tại [tools/authorization-lab/README.md](tools/authorization-lab/README.md).
+Hướng dẫn vận hành, lệnh, fixtures và quy tắc an toàn của lab nằm tại [tools/authorization-lab/README.md](tools/authorization-lab/README.md). Để bootstrap Controlled BOLA Lab từ Linux, chạy `bash tools/run_controlled_bola_bootstrap.sh`; script tự tìm project root, nạp `.env`, hỏi token ẩn khi chưa có và chuyển tiếp tùy chọn như `--health-smoke`.
 
 ## Chạy web local
 
