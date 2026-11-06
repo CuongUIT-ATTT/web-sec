@@ -1,0 +1,18 @@
+ID,Source,Req. Timestamp,Method,URL,Code,Reason,RTT,Size Resp. Body,Highest Alert,Note,Tags
+1,Auth,Fri Oct 30 14:34:02 ICT 2026,GET,http://127.0.0.1:5000/users/v1/login,404,NOT FOUND,14,48,,false,Authentication
+2,Auth,Fri Oct 30 14:34:02 ICT 2026,POST,http://127.0.0.1:5000/users/v1/login,200,OK,12,224,,false,Authentication
+3,Auth,Fri Oct 30 14:34:02 ICT 2026,GET,http://127.0.0.1:5000/me,200,OK,3,94,,false,"Authentication, Verification"
+4,Auth,Fri Oct 30 14:34:02 ICT 2026,GET,http://127.0.0.1:5000/me,200,OK,4,94,,false,"Authentication, Verification"
+10,Auth,Fri Oct 30 14:47:46 ICT 2026,GET,http://127.0.0.1:5000/users/v1/login,404,NOT FOUND,4,48,,false,Authentication
+11,Auth,Fri Oct 30 14:47:46 ICT 2026,POST,http://127.0.0.1:5000/users/v1/login,200,OK,5,224,,false,Authentication
+12,Auth,Fri Oct 30 14:47:46 ICT 2026,GET,http://127.0.0.1:5000/me,200,OK,4,97,,false,"Authentication, Verification"
+13,Auth,Fri Oct 30 14:47:46 ICT 2026,GET,http://127.0.0.1:5000/me,200,OK,5,97,,false,"Authentication, Verification"
+15,Auth,Fri Oct 30 14:49:26 ICT 2026,GET,http://127.0.0.1:5000/users/v1/login,404,NOT FOUND,3,48,,false,Authentication
+16,Auth,Fri Oct 30 14:49:26 ICT 2026,POST,http://127.0.0.1:5000/users/v1/login,200,OK,5,224,,false,Authentication
+17,Auth,Fri Oct 30 14:49:26 ICT 2026,GET,http://127.0.0.1:5000/me,200,OK,4,97,,false,"Authentication, Verification"
+18,Auth,Fri Oct 30 14:49:26 ICT 2026,GET,http://127.0.0.1:5000/me,200,OK,3,97,,false,"Authentication, Verification"
+22,Manual,Fri Oct 30 15:41:33 ICT 2026,GET,http://127.0.0.1:5000/books/v1/week1-userA-book,401,UNAUTHORIZED,3,119,,false,
+25,Manual,Fri Oct 30 15:41:33 ICT 2026,GET,http://127.0.0.1:5000/books/v1/week1-userB-book,401,UNAUTHORIZED,3,119,Thấp,false,
+26,Manual,Fri Oct 30 15:41:33 ICT 2026,GET,http://127.0.0.1:5000/me,401,UNAUTHORIZED,3,119,Thấp,false,
+27,Manual,Fri Oct 30 15:41:33 ICT 2026,GET,http://127.0.0.1:5000/users/v1/userA,200,OK,3,50,Thấp,false,JSON
+28,Manual,Fri Oct 30 15:41:33 ICT 2026,GET,http://127.0.0.1:5000/users/v1/userB,200,OK,3,50,Thấp,false,JSON

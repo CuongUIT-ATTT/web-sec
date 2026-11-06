@@ -11,15 +11,24 @@ zap/private/
 zap/run-output/
 .bfla-runs/
 
-# Generated Week 2 reports may contain lab response data
+# Generated authorization-lab reports may contain lab response data
 results/
+
+# Web MVP secrets, SQLite data, and frontend build/runtime files
+data/
+frontend/node_modules/
+frontend/dist/
 
 # Python runtime and package-build files
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
 build/
 dist/
+
+# A local frontend preview can create a SQLite runtime copy; never version it.
+frontend/data/
 
 # Downloaded third-party source checkout; retain locally as untrusted reference only.
 VAmPI-source/
