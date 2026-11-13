@@ -23,6 +23,11 @@ class Settings:
     max_response_bytes: int
     default_timeout_seconds: float
     secure_cookies: bool = False
+    external_lab_bridge_enabled: bool = False
+    external_lab_bridge_socket_path: Path | None = None
+    external_lab_bridge_shared_secret: str = ""
+    external_lab_bridge_max_body_bytes: int = 8192
+    external_lab_bridge_clock_skew_seconds: int = 60
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -47,6 +52,11 @@ class Settings:
             raise SettingsError("Target network or port configuration is invalid.") from error
         if not networks or not ports or any(port < 1 or port > 65535 for port in ports):
             raise SettingsError("At least one valid target network and port are required.")
+        bridge_enabled = os.environ.get("AUTHZ_EXTERNAL_LAB_BRIDGE_ENABLED", "false").lower() == "true"
+        bridge_socket_text = os.environ.get("AUTHZ_EXTERNAL_LAB_BRIDGE_SOCKET_PATH", "").strip()
+        bridge_secret = os.environ.get("AUTHZ_EXTERNAL_LAB_BRIDGE_SHARED_SECRET", "")
+        if bridge_enabled and (not bridge_socket_text or len(bridge_secret) < 32):
+            raise SettingsError("External lab bridge requires a socket path and a dedicated secret of at least 32 characters.")
         return cls(
             database_path=database_path,
             admin_password=admin_password,
@@ -57,4 +67,7 @@ class Settings:
             max_response_bytes=int(os.environ.get("AUTHZ_MAX_RESPONSE_BYTES", "32768")),
             default_timeout_seconds=float(os.environ.get("AUTHZ_DEFAULT_TIMEOUT_SECONDS", "5")),
             secure_cookies=os.environ.get("AUTHZ_SECURE_COOKIES", "false").lower() == "true",
+            external_lab_bridge_enabled=bridge_enabled,
+            external_lab_bridge_socket_path=Path(bridge_socket_text) if bridge_socket_text else None,
+            external_lab_bridge_shared_secret=bridge_secret,
         )

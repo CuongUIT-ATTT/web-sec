@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 
-import { api, type BatchMatrix, type Finding, type Identity, type MatrixCase, type Operation, type OperationResourceMapping, type Policy, type Project, type Resource, type ResourceType, type Result, type Run, type Target } from "./api";
+import { api, type BatchMatrix, type ExternalLabJob, type Finding, type Identity, type MatrixCase, type Operation, type OperationResourceMapping, type Policy, type Project, type Resource, type ResourceType, type Result, type Run, type Target } from "./api";
 
 type Notice = { kind: "error" | "success" | "info"; text: string } | null;
 
@@ -31,15 +31,16 @@ export function App() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [externalLabJobs, setExternalLabJobs] = useState<ExternalLabJob[]>([]);
   const { notice, setNotice, perform } = useAction();
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null;
   const target = targets[0] ?? null;
 
   async function refreshProject(projectId: number) {
-    const [nextTargets, nextIdentities, nextOperations, nextTypes, nextResources, nextPolicies, nextMappings, nextRuns, nextFindings] = await Promise.all([
-      api.targets(projectId), api.identities(projectId), api.operations(projectId), api.resourceTypes(projectId), api.resources(projectId), api.policies(projectId), api.operationResourceMappings(projectId), api.runs(projectId), api.findings(projectId),
+    const [nextTargets, nextIdentities, nextOperations, nextTypes, nextResources, nextPolicies, nextMappings, nextRuns, nextFindings, nextExternalLabJobs] = await Promise.all([
+      api.targets(projectId), api.identities(projectId), api.operations(projectId), api.resourceTypes(projectId), api.resources(projectId), api.policies(projectId), api.operationResourceMappings(projectId), api.runs(projectId), api.findings(projectId), api.externalLabJobs(projectId),
     ]);
-    setTargets(nextTargets); setIdentities(nextIdentities); setOperations(nextOperations); setResourceTypes(nextTypes); setResources(nextResources); setPolicies(nextPolicies); setMappings(nextMappings); setRuns(nextRuns); setFindings(nextFindings);
+    setTargets(nextTargets); setIdentities(nextIdentities); setOperations(nextOperations); setResourceTypes(nextTypes); setResources(nextResources); setPolicies(nextPolicies); setMappings(nextMappings); setRuns(nextRuns); setFindings(nextFindings); setExternalLabJobs(nextExternalLabJobs);
   }
 
   async function refreshProjects(activeId = activeProjectId) {
@@ -56,7 +57,7 @@ export function App() {
 
   useEffect(() => {
     if (!activeProjectId) return;
-    setTargets([]); setIdentities([]); setOperations([]); setResourceTypes([]); setResources([]); setPolicies([]); setMappings([]); setMatrix([]); setRuns([]); setResults([]); setFindings([]);
+    setTargets([]); setIdentities([]); setOperations([]); setResourceTypes([]); setResources([]); setPolicies([]); setMappings([]); setMatrix([]); setRuns([]); setResults([]); setFindings([]); setExternalLabJobs([]);
     refreshProject(activeProjectId).catch((error: unknown) => setNotice(errorNotice(error)));
   }, [activeProjectId]);
 
@@ -77,6 +78,7 @@ export function App() {
         <Station number="04" title="Tài nguyên và mapping" detail="Khai báo resource có owner; dùng JSON Pointer tuyệt đối RFC 6901."><ResourcePanel projectId={activeProject.id} identities={identities} types={resourceTypes} resources={resources} onChanged={async () => { await refreshProject(activeProject.id); setMatrix([]); }} onNotice={setNotice} /></Station>
         <Station number="05" title="Mapping, chính sách và ma trận" detail="Chỉ mapping GET được bật mới vào batch; policy conflict vẫn bị chặn."><MatrixPanel projectId={activeProject.id} operations={operations} types={resourceTypes} resources={resources} identities={identities} policies={policies} mappings={mappings} matrix={matrix} onMatrix={setMatrix} onChanged={async () => { await refreshProject(activeProject.id); setMatrix([]); }} onNotice={setNotice} /></Station>
         <Station number="06" title="Batch run và bằng chứng" detail="Queue toàn bộ mapping GET đã bật; worker tạo đối chứng fresh cho từng resource."><RunPanel projectId={activeProject.id} targets={targets} mappings={mappings} runs={runs} results={results} findings={findings} onRuns={setRuns} onResults={setResults} onFindings={setFindings} onNotice={setNotice} /></Station>
+        <Station number="07" title="Xác minh lab read-only bên ngoài" detail="Bridge do operator vận hành, chỉ chạy VAmPI local read-only; không chạy BFLA, ZAP hay Docker."><ExternalLabPanel projectId={activeProject.id} jobs={externalLabJobs} onJobs={setExternalLabJobs} onNotice={setNotice} /></Station>
       </div>
     </>}</section>
   </main>;
@@ -149,6 +151,16 @@ function MatrixPanel({ projectId, operations, types, resources, identities, poli
   const canMatrix = Boolean(operationId && resourceId);
   const canMap = Boolean(operationId && typeId);
   return <div className="panel-content"><div className="compact-form"><label>Batch operation-resource mapping<select value={operationId} onChange={(event) => setOperationId(event.target.value)}><option value="">Chọn operation GET</option>{operations.filter((operation) => operation.selected).map((operation) => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></label><label>Loại resource cho batch<select value={typeId} onChange={(event) => setTypeId(event.target.value)}><option value="">Chọn loại resource</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label><div className="actions">{selectedMapping ? <button disabled={!canMap} onClick={() => void toggleMapping()}>{selectedMapping.selected ? "Tắt mapping batch" : "Bật mapping batch"}</button> : <button disabled={!canMap} onClick={() => void addMapping()}>Thêm mapping batch</button>}</div></div>{mappings.length > 0 && <ul className="matrix-list">{mappings.map((mapping) => <li key={mapping.id}><b>{mapping.selected ? "BATCH ENABLED" : "BATCH DISABLED"}</b><span>{operations.find((operation) => operation.id === mapping.operation_id)?.path ?? `Operation #${mapping.operation_id}`}</span><span>{types.find((type) => type.id === mapping.resource_type_id)?.name ?? `Type #${mapping.resource_type_id}`}</span></li>)}</ul>}<div className="divider" /><form className="compact-form" onSubmit={(event) => { event.preventDefault(); const value = { operation_id: Number(operationId), resource_type_id: Number(typeId), decision, identity_id: Number(subject), role: null, resource_id: null }; const request = selectedPolicy ? api.updatePolicy(selectedPolicy.id, value) : api.createPolicy(projectId, value); request.then(async () => { await onChanged(); resetPolicy(); onNotice({ kind: "success", text: `Đã ${selectedPolicy ? "cập nhật" : "lưu"} policy; ma trận cần sinh lại và chỉ run mới dùng policy này.` }); }).catch((error: unknown) => onNotice(errorNotice(error))); }}><label>Policy đang sửa<select value={policyId} onChange={(event) => setPolicyId(event.target.value)}><option value="">Tạo policy mới</option>{policies.map((policy) => <option key={policy.id} value={policy.id}>#{policy.id} v{policy.version} · {policy.decision}</option>)}</select></label><label>Operation<select value={operationId} onChange={(event) => setOperationId(event.target.value)} required><option value="">Chọn operation</option>{operations.filter((operation) => operation.selected).map((operation) => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></label><label>Loại resource<select value={typeId} onChange={(event) => { setTypeId(event.target.value); setResourceId(""); }} required><option value="">Chọn loại</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label><label>Danh tính áp dụng<select value={subject} onChange={(event) => setSubject(event.target.value)} required><option value="">Chọn danh tính</option>{identities.map((identity) => <option key={identity.id} value={identity.id}>{identity.display_name}</option>)}</select></label><label>Quyết định<select value={decision} onChange={(event) => setDecision(event.target.value as Policy["decision"])}><option>ALLOW</option><option>DENY</option><option>UNKNOWN</option></select></label><div className="actions"><button>{selectedPolicy ? "Lưu policy" : "Tạo policy"}</button>{selectedPolicy && <button type="button" className="quiet" onClick={resetPolicy}>Tạo policy khác</button>}</div></form><div className="divider" /><label>Resource cho ma trận<select value={resourceId} onChange={(event) => setResourceId(event.target.value)} required><option value="">Chọn resource</option>{resources.filter((resource) => resource.resource_type_id === selectedType?.id).map((resource) => <option key={resource.id} value={resource.id}>{resource.external_id}</option>)}</select></label><button disabled={!canMatrix} onClick={() => api.matrix(projectId, Number(operationId), Number(resourceId)).then(onMatrix).catch((error: unknown) => onNotice(errorNotice(error)))}>Sinh ma trận read-only</button>{matrix.length > 0 && <ul className="matrix-list">{matrix.map((item) => <li key={item.case_key}><b>{item.control_type}</b><span>actor #{item.actor_identity_id}</span><span>{item.policy_status}</span>{item.warnings.map((warning) => <em key={warning}>{warning}</em>)}</li>)}</ul>}</div>;
+}
+
+function ExternalLabPanel({ projectId, jobs, onJobs, onNotice }: { projectId: number; jobs: ExternalLabJob[]; onJobs: (jobs: ExternalLabJob[]) => void; onNotice: (notice: Notice) => void }) {
+  const active = jobs.some((job) => ["QUEUED", "DISPATCHING", "SUBMITTED", "RUNNING", "CANCEL_REQUESTED"].includes(job.status));
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => api.externalLabJobs(projectId).then(onJobs).catch(() => undefined), 1000);
+    return () => window.clearInterval(timer);
+  }, [active, projectId, onJobs]);
+  return <div className="panel-content"><section className="finding-groups"><h4>Operator-side bridge only</h4><p>Chỉ queue workflow VAmPI local read-only cố định. Không có command, target, token, log hay artifact path trong giao diện.</p><p>Nếu bridge chưa được operator cấu hình, yêu cầu queue sẽ bị từ chối an toàn và không có local fallback.</p><p>BFLA disposable, ZAP runtime và Docker vẫn là operator-only và không thể chạy tại đây.</p></section><button disabled={active} onClick={() => api.createReadOnlyExternalLabJob(projectId).then((job) => { onJobs([job, ...jobs]); onNotice({ kind: "info", text: "Đã xếp read-only external lab job cho bridge của operator." }); }).catch((error: unknown) => onNotice(errorNotice(error)))}>Queue read-only verification</button>{jobs.length > 0 && <ul className="run-list">{jobs.map((job) => <li key={job.public_id}><div><b>Lab job {job.public_id.slice(0, 8)}</b><span className={`status ${job.status.toLowerCase()}`}>{job.status}</span></div><p className="run-summary">{job.failure_code ? `failure ${job.failure_code}` : "No raw output is retained."}{job.artifact_manifest_sha256 ? " · redacted manifest verified" : ""}</p>{Object.keys(job.result_summary).length > 0 && <p className="run-summary">{typeof job.result_summary.case_count === "number" ? `cases ${job.result_summary.case_count}` : "Summary received."}</p>}{["QUEUED", "DISPATCHING", "SUBMITTED", "RUNNING"].includes(job.status) && <button className="quiet" onClick={() => api.cancelExternalLabJob(job.public_id).then(() => api.externalLabJobs(projectId).then(onJobs)).catch((error: unknown) => onNotice(errorNotice(error)))}>Dừng</button>}</li>)}</ul>}</div>;
 }
 
 function RunPanel({ projectId, targets, mappings, runs, results, findings, onRuns, onResults, onFindings, onNotice }: { projectId: number; targets: Target[]; mappings: OperationResourceMapping[]; runs: Run[]; results: Result[]; findings: Finding[]; onRuns: (runs: Run[]) => void; onResults: (results: Result[]) => void; onFindings: (findings: Finding[]) => void; onNotice: (notice: Notice) => void }) {

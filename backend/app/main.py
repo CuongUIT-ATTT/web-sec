@@ -13,6 +13,9 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from backend.app.api.routes import router
 from backend.app.api.workflow_routes import router as workflow_router
+from backend.app.api.external_lab_routes import internal_router as external_lab_internal_router
+from backend.app.api.external_lab_routes import router as external_lab_router
+from backend.app.external_lab.dispatcher import external_lab_dispatcher_loop
 from backend.app.core.settings import Settings
 from backend.app.persistence.database import create_session_factory
 from backend.app.workers.service import worker_loop
@@ -28,11 +31,18 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.session_factory = session_factory
         stop_event = asyncio.Event()
         worker_task = asyncio.create_task(worker_loop(session_factory, settings, stop_event))
+        external_lab_task = (
+            asyncio.create_task(external_lab_dispatcher_loop(session_factory, settings, stop_event))
+            if settings.external_lab_bridge_enabled
+            else None
+        )
         try:
             yield
         finally:
             stop_event.set()
             await worker_task
+            if external_lab_task is not None:
+                await external_lab_task
 
     app = FastAPI(
         title="Controlled REST Authorization Testing",
@@ -56,6 +66,8 @@ def create_app(settings: Settings) -> FastAPI:
 
     app.include_router(router)
     app.include_router(workflow_router)
+    app.include_router(external_lab_router)
+    app.include_router(external_lab_internal_router)
 
     frontend_dist = Path(__file__).resolve().parents[2] / "frontend_dist"
     if frontend_dist.is_dir() and (frontend_dist / "index.html").is_file():

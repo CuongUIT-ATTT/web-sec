@@ -13,6 +13,7 @@ authors = [{name = "Local lab project"}]
 
 [project.scripts]
 vampi-authz-lab = "authz_lab.cli:main"
+vampi-authz-lab-bridge = "authz_lab.bridge:main"
 vampi-bfla-disposable = "authz_lab.disposable.cli:main"
 vampi-authz-evaluate = "authz_lab.evaluation.cli:main"
 
