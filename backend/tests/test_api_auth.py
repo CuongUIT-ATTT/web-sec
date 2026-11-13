@@ -24,4 +24,9 @@ def test_write_endpoints_require_authenticated_session_and_csrf(tmp_path) -> Non
         login = client.post("/api/auth/login", json={"password": "password"})
         assert client.post("/api/projects", json={"name": "Missing CSRF"}).status_code == 403
         csrf = login.json()["csrf_token"]
-        assert client.post("/api/projects", json={"name": "Protected"}, headers={"X-CSRF-Token": csrf}).status_code == 201
+        project = client.post("/api/projects", json={"name": "Protected"}, headers={"X-CSRF-Token": csrf})
+        assert project.status_code == 201
+        project_id = project.json()["id"]
+        external_path = f"/api/projects/{project_id}/external-lab-jobs/read-only-verification"
+        assert client.post(external_path).status_code == 403
+        assert client.post(external_path, headers={"X-CSRF-Token": csrf}).status_code == 409

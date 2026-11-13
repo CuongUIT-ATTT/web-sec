@@ -1,6 +1,6 @@
 # Công cụ cho lab phân quyền
 
-Đây là một package lab giảng dạy độc lập, chỉ hoạt động cục bộ. Package này **không** được ứng dụng web FastAPI import và ứng dụng web không bao giờ gọi nó qua `subprocess`.
+Đây là package lab giảng dạy độc lập, chỉ hoạt động cục bộ. Package này **không** được ứng dụng web FastAPI import và FastAPI không bao giờ gọi nó qua `subprocess`. Khi operator bật bridge riêng, bridge (không phải FastAPI) chỉ có thể chạy workflow VAmPI read-only cố định qua Unix socket/HMAC; bridge không có capability BFLA, ZAP runtime hoặc Docker.
 
 ## Ranh giới an toàn
 
@@ -43,7 +43,13 @@ Launcher tự xác định thư mục project, cố định target `http://100.1
 bash tools/run_controlled_bola_bootstrap.sh --health-smoke
 ```
 
-`.env` phải đặt `AUTHZ_ADMIN_PASSWORD` và backend phải chạy với `AUTHZ_ALLOWED_TARGET_NETWORKS` cho phép `100.106.64.21/32`, cùng `AUTHZ_ALLOWED_TARGET_PORTS` bao gồm `5003`. Launcher không tạo run. `--health-smoke` là tùy chọn duy nhất gửi request trực tiếp đến lab và chỉ gọi `GET /health`.
+`.env` phải đặt `AUTHZ_ADMIN_PASSWORD` và backend phải chạy với `AUTHZ_ALLOWED_TARGET_NETWORKS` cho phép `100.106.64.21/32`, cùng `AUTHZ_ALLOWED_TARGET_PORTS` bao gồm `5003`. Launcher không tạo run mặc định. `--health-smoke` là tùy chọn duy nhất gửi request trực tiếp đến lab và chỉ gọi `GET /health`. Dùng `--queue-batch` để opt-in queue một batch GET; thêm `--wait` nếu cần polling tối đa 30 giây. `--cancel-run ID` hoặc `--show-results ID` chỉ thao tác run thuộc project vừa reconcile và output kết quả chỉ là aggregate conclusion.
+
+## Operator-side read-only bridge
+
+`vampi-authz-lab-bridge` là tiến trình riêng duy nhất được phép khởi chạy CLI theo request từ web. FastAPI không import package này và không gọi `subprocess`. Bridge chỉ nhận HMAC request trên Unix socket cho literal job `READ_ONLY_VAMPI_VERIFICATION_V1`, sau đó chạy fixed argv `vampi-authz-lab verify-workflow` trên `http://127.0.0.1:5000`. Không có flag hay API cho arbitrary command, argv, target, BFLA, ZAP, Docker, Docker socket, hoặc artifact path từ browser/web.
+
+Operator phải cung cấp các biến môi trường `AUTHZ_LAB_BRIDGE_SOCKET_PATH`, `AUTHZ_LAB_BRIDGE_SHARED_SECRET`, `AUTHZ_LAB_BRIDGE_CALLBACK_URL`, `AUTHZ_LAB_BRIDGE_EXECUTABLE`, `AUTHZ_LAB_BRIDGE_SPEC`, `AUTHZ_LAB_BRIDGE_ROLES_CONFIG`, `AUTHZ_LAB_BRIDGE_OWNERSHIP`, `AUTHZ_LAB_BRIDGE_ARTIFACT_ROOT`, và `AUTHZ_LAB_BRIDGE_JOURNAL`. Tất cả path phải tuyệt đối; callback phải là `http://127.0.0.1:<port>`; secret dài ít nhất 32 ký tự và dedicated. Start bridge trước web dispatcher, bảo vệ socket/journal/artifact root theo UID/GID của operator, và không mount Docker socket. Callback tạm thời lỗi được lưu outbox journal để retry ở lifecycle kế tiếp; restart không replay child đang dở mà phát event `INTERRUPTED`.
 
 ## Kiểm thử
 

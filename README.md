@@ -3,7 +3,9 @@
 Repository này có hai thành phần **tách biệt theo ranh giới an toàn**:
 
 1. **Ứng dụng web** — FastAPI/React phục vụ kiểm thử phân quyền REST chỉ đọc, có SQLite lưu bền.
-2. **Công cụ cho lab phân quyền** — công cụ VAmPI/ZAP/BFLA chỉ hoạt động cục bộ, độc lập tại [`tools/authorization-lab/`](tools/authorization-lab/), không được web runtime import hay gọi qua `subprocess`.
+2. **Công cụ cho lab phân quyền** — công cụ VAmPI/ZAP/BFLA hoạt động cục bộ tại [`tools/authorization-lab/`](tools/authorization-lab/). Web runtime không import hay gọi CLI qua `subprocess`; khi được bật tường minh, web chỉ gửi một job VAmPI read-only cố định tới bridge do operator vận hành qua Unix socket riêng.
+
+Bridge mặc định bị tắt. Bridge không nhận command/argv/target/path từ trình duyệt, không chạy BFLA, ZAP runtime hay Docker, và chỉ trả summary/hash artifact đã rút gọn. BFLA vẫn là workflow disposable được operator chạy tường minh ngoài web runtime.
 
 > Chỉ dùng trên lab đã được ủy quyền. Đây không phải scanner dùng cho production hay mục đích tổng quát.
 
@@ -80,10 +82,19 @@ python -m pip install -e "./tools/authorization-lab"
 Các entry points:
 
 - `vampi-authz-lab`: read-only VAmPI checks tại `127.0.0.1:5000`.
+- `vampi-authz-lab-bridge`: bridge Unix socket do operator vận hành, chỉ khởi chạy `verify-workflow` với đầu vào tuyệt đối đã review và target VAmPI cố định.
 - `vampi-authz-evaluate`: nhận evidence có sẵn, điều phối BFLA receipt/ZAP constrained evaluation.
 - `vampi-bfla-disposable`: lifecycle destructive riêng, manifest-bound, chỉ cho disposable target `127.0.0.1:5003`.
 
 Xem lệnh, fixtures và quy tắc an toàn tại [tools/authorization-lab/README.md](tools/authorization-lab/README.md). Compose BFLA độc lập là [`deploy/labs/vampi-bfla-disposable.compose.yaml`](deploy/labs/vampi-bfla-disposable.compose.yaml), không bao giờ nằm trong web Compose.
+
+### Bật bridge read-only (operator-side, tùy chọn)
+
+Không bật bridge trong Compose mặc định và không mount Docker socket. Operator chạy bridge trong venv/package lab riêng, rồi mới bật web feature bằng `AUTHZ_EXTERNAL_LAB_BRIDGE_ENABLED=true`, một Unix socket private và shared secret **riêng** ít nhất 32 ký tự. Secret này không được tái dùng admin password, session secret hay Fernet key. Bridge chỉ chấp nhận callback về `http://127.0.0.1:<port>` và các path tuyệt đối đã được review cho executable, OpenAPI, roles config, ownership CSV, artifact root và journal.
+
+Bridge journal giữ callback terminal chưa gửi để retry khi callback tạm thời không sẵn sàng. Sau restart, bridge không chạy lại child process không chắc chắn mà báo `INTERRUPTED`; web cũng chuyển job đang không chứng minh được sang `UNKNOWN`. Chỉ summary allowlisted và SHA-256 manifest vào web database—không có stdout/stderr, token, artifact, response body hay host path. Dọn artifact host-side theo chính sách retention của operator.
+
+CLI bootstrap vẫn là reconcile-only mặc định. `--queue-batch` là opt-in để queue batch GET hiện có; `--wait` chỉ dùng cùng nó; `--cancel-run ID` và `--show-results ID` chỉ chấp nhận run thuộc project vừa reconcile.
 
 ## Kiểm thử
 

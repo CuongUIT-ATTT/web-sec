@@ -10,6 +10,7 @@ from sqlalchemy import Engine, inspect, text
 
 
 T18_MIGRATION_ID = "20261106_t18_batch_execution_ledger"
+T19_MIGRATION_ID = "20261113_t19_external_lab_jobs"
 
 
 class UpgradeError(RuntimeError):
@@ -136,6 +137,32 @@ def upgrade_database(engine: Engine) -> DuplicateCaseKeyReport:
                 connection.execute(
                     text("INSERT INTO schema_migrations (migration_id) VALUES (:migration_id)"),
                     {"migration_id": T18_MIGRATION_ID},
+                )
+            applied_external = connection.execute(
+                text("SELECT 1 FROM schema_migrations WHERE migration_id = :migration_id"),
+                {"migration_id": T19_MIGRATION_ID},
+            ).scalar()
+            if not applied_external:
+                current_tables = set(inspect(connection).get_table_names())
+                required_external = {
+                    "id", "public_id", "project_id", "job_kind", "protocol_version", "status",
+                    "dispatch_attempts", "bridge_sequence", "cancellation_requested_at", "dispatched_at",
+                    "started_at", "finished_at", "result_summary", "artifact_manifest_sha256", "failure_code",
+                    "created_at", "updated_at",
+                }
+                if "external_lab_jobs" not in current_tables or not required_external.issubset(_table_columns(connection, "external_lab_jobs")):
+                    raise UpgradeError("External lab job table is missing or incompatible; refusing schema mutation.")
+                connection.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_lab_one_active "
+                    "ON external_lab_jobs ((1)) WHERE status IN "
+                    "('QUEUED', 'DISPATCHING', 'SUBMITTED', 'RUNNING', 'CANCEL_REQUESTED')"
+                ))
+                connection.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_bridge_nonces_expires_at ON bridge_nonces (expires_at)"
+                ))
+                connection.execute(
+                    text("INSERT INTO schema_migrations (migration_id) VALUES (:migration_id)"),
+                    {"migration_id": T19_MIGRATION_ID},
                 )
             connection.execute(text("COMMIT"))
         except Exception:

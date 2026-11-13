@@ -13,6 +13,7 @@ export type ExecutionSummary = { planned_attempts: number; transport_attempts: n
 export type Run = { id: number; project_id: number; status: string; snapshot: Record<string, unknown>; execution_summary: ExecutionSummary | null };
 export type Result = { case_key: string; execution_status: string; authorization_conclusion: string; reason_codes: string[]; http_status: number | null; response_metadata: Record<string, unknown> };
 export type Finding = { id: number; fingerprint: string; conclusion: string; operation: { method: string; path: string }; policy: { id: number; version: number }; reproduction_count: number };
+export type ExternalLabJob = { public_id: string; project_id: number; job_kind: string; protocol_version: number; status: string; requested_at: string; dispatched_at: string | null; started_at: string | null; finished_at: string | null; cancel_requested_at: string | null; result_summary: Record<string, unknown>; artifact_manifest_sha256: string | null; failure_code: string | null };
 
 export type TargetInput = Omit<Target, "id" | "project_id">;
 export type IdentityInput = { display_name: string; role?: string | null; principal_pointer?: string | null; expected_principal?: string | null; bearer_token?: string };
@@ -82,4 +83,7 @@ export const api = {
   results: (runId: number) => request<Result[]>(`/api/runs/${runId}/results`),
   findings: (projectId: number) => request<Finding[]>(`/api/projects/${projectId}/findings`),
   cancelRun: (runId: number) => request<void>(`/api/runs/${runId}/cancel`, { method: "POST" }),
+  externalLabJobs: (projectId: number) => request<ExternalLabJob[]>(`/api/projects/${projectId}/external-lab-jobs`),
+  createReadOnlyExternalLabJob: (projectId: number) => request<ExternalLabJob>(`/api/projects/${projectId}/external-lab-jobs/read-only-verification`, { method: "POST" }),
+  cancelExternalLabJob: (publicId: string) => request<void>(`/api/external-lab-jobs/${publicId}/cancel`, { method: "POST" }),
 };

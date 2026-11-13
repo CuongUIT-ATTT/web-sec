@@ -141,6 +141,39 @@ class Run(Timestamped, Base):
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
+class ExternalLabJob(Timestamped, Base):
+    """Durable metadata for an operator-side, fixed read-only lab workflow."""
+
+    __tablename__ = "external_lab_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    job_kind: Mapped[str] = mapped_column(String(80), nullable=False)
+    protocol_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="QUEUED")
+    dispatch_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    bridge_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cancellation_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result_summary: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    artifact_manifest_sha256: Mapped[str | None] = mapped_column(String(64))
+    failure_code: Mapped[str | None] = mapped_column(String(64))
+
+
+class BridgeNonce(Timestamped, Base):
+    """One-time signed bridge request nonce; only opaque digest metadata is stored."""
+
+    __tablename__ = "bridge_nonces"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    audience: Mapped[str] = mapped_column(String(32), nullable=False)
+    nonce_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class RunIdentitySecret(Timestamped, Base):
     __tablename__ = "run_identity_secrets"
     __table_args__ = (UniqueConstraint("run_id", "identity_id", name="uq_run_identity_secret"),)

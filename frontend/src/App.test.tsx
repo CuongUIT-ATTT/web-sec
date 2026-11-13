@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { api } from "./api";
 import { App } from "./App";
@@ -19,10 +19,15 @@ vi.mock("./api", () => ({
     batchMatrix: vi.fn().mockResolvedValue({ identity_count: 0, concrete_target_count: 0, actor_case_count: 0, identity_verifications: 0, owner_baselines: 0, planned_attempts: 0, maximum_http_requests: 0, request_limit: 100, within_request_limit: true, targets: [] }),
     runs: vi.fn().mockResolvedValue([]),
     findings: vi.fn().mockResolvedValue([]),
+    externalLabJobs: vi.fn().mockResolvedValue([]),
+    createReadOnlyExternalLabJob: vi.fn().mockResolvedValue({ public_id: "12345678-1234-1234-1234-123456789abc", project_id: 1, job_kind: "READ_ONLY_VAMPI_VERIFICATION_V1", protocol_version: 1, status: "QUEUED", requested_at: "2026-11-13T00:00:00Z", dispatched_at: null, started_at: null, finished_at: null, cancel_requested_at: null, result_summary: {}, artifact_manifest_sha256: null, failure_code: null }),
+    cancelExternalLabJob: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
 const mockedApi = vi.mocked(api);
+
+afterEach(cleanup);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,6 +44,9 @@ beforeEach(() => {
   mockedApi.batchMatrix.mockResolvedValue({ identity_count: 0, concrete_target_count: 0, actor_case_count: 0, identity_verifications: 0, owner_baselines: 0, planned_attempts: 0, maximum_http_requests: 0, request_limit: 100, within_request_limit: true, targets: [] });
   mockedApi.runs.mockResolvedValue([]);
   mockedApi.findings.mockResolvedValue([]);
+  mockedApi.externalLabJobs.mockResolvedValue([]);
+  mockedApi.createReadOnlyExternalLabJob.mockResolvedValue({ public_id: "12345678-1234-1234-1234-123456789abc", project_id: 1, job_kind: "READ_ONLY_VAMPI_VERIFICATION_V1", protocol_version: 1, status: "QUEUED", requested_at: "2026-11-13T00:00:00Z", dispatched_at: null, started_at: null, finished_at: null, cancel_requested_at: null, result_summary: {}, artifact_manifest_sha256: null, failure_code: null });
+  mockedApi.cancelExternalLabJob.mockResolvedValue(undefined);
 });
 
 describe("authorization testing workspace", () => {
@@ -51,6 +59,21 @@ describe("authorization testing workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Vào trạm kiểm thử" }));
 
     expect(await screen.findByText("Dự án")).toBeInTheDocument();
+  });
+
+  it("queues only the fixed external read-only workflow", async () => {
+    mockedApi.projects.mockResolvedValue([{ id: 1, name: "Lab", description: "Edit test" }]);
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu quản trị"), { target: { value: "password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Vào trạm kiểm thử" }));
+    const queue = await screen.findByRole("button", { name: "Queue read-only verification" });
+    const panel = screen.getByText(/Không có command, target, token, log hay artifact path/i).closest("article");
+    expect(panel).toBeTruthy();
+    expect(panel).not.toHaveTextContent(/Base URL IP lab/i);
+
+    fireEvent.click(queue);
+    expect(mockedApi.createReadOnlyExternalLabJob).toHaveBeenCalledWith(1);
   });
 
   it("prefills safe identity fields but never its bearer token", async () => {

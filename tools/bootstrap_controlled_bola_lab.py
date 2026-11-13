@@ -14,6 +14,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+import time
 from pathlib import Path
 from typing import Any, Mapping, Protocol
 from urllib.error import HTTPError, URLError
@@ -344,11 +345,57 @@ def verify_identities(client: ApiClient, target_id: int, identity_ids: tuple[int
     return confirmed
 
 
+def _project_run(client: ApiClient, project_id: int, run_id: int) -> dict[str, Any]:
+    matches = [run for run in client.request("GET", f"/api/projects/{project_id}/runs") if run.get("id") == run_id]
+    if len(matches) != 1:
+        raise BootstrapError("Requested run does not belong to the reconciled project.")
+    return matches[0]
+
+
+def queue_batch(client: ApiClient, project_id: int, target_id: int) -> dict[str, Any]:
+    matrix = client.request("GET", f"/api/projects/{project_id}/batch-matrix?target_id={target_id}")
+    if not matrix.get("within_request_limit"):
+        raise BootstrapError("Batch exceeds the configured request limit.")
+    run = client.request("POST", f"/api/projects/{project_id}/batch-runs", {"target_id": target_id})
+    if not isinstance(run, dict) or not isinstance(run.get("id"), int):
+        raise BootstrapError("Local web API returned an invalid batch run.")
+    return run
+
+
+def wait_for_run(client: ApiClient, project_id: int, run_id: int, timeout_seconds: float = 30.0) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        run = _project_run(client, project_id, run_id)
+        if run.get("status") in {"COMPLETED", "FAILED", "CANCELLED", "INTERRUPTED"}:
+            return run
+        time.sleep(0.5)
+    return _project_run(client, project_id, run_id)
+
+
+def result_counts(client: ApiClient, project_id: int, run_id: int) -> dict[str, int]:
+    _project_run(client, project_id, run_id)
+    counts: dict[str, int] = {}
+    for item in client.request("GET", f"/api/runs/{run_id}/results"):
+        key = str(item.get("authorization_conclusion", "UNKNOWN"))
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Configure the authorized Controlled BOLA Lab in a local web app without creating a run.")
+    parser = argparse.ArgumentParser(description="Configure the authorized Controlled BOLA Lab in a local web app; run control requires explicit opt-in.")
     parser.add_argument("--health-smoke", action="store_true", help="GET only the target /health endpoint and print its status code.")
     parser.add_argument("--verify-identities", action="store_true", help="Use the local web app to perform redacted /me verification for userA and userB.")
+    parser.add_argument("--queue-batch", action="store_true", help="Explicitly queue one existing web batch run after configuration.")
+    parser.add_argument("--wait", action="store_true", help="Wait briefly for the batch queued by --queue-batch; never cancels on timeout.")
+    parser.add_argument("--cancel-run", type=int, help="Explicitly request cancellation for a run in the reconciled project.")
+    parser.add_argument("--show-results", type=int, help="Print only aggregate conclusions for a run in the reconciled project.")
     args = parser.parse_args(argv)
+    if args.wait and not args.queue_batch:
+        parser.error("--wait requires --queue-batch")
+    if args.queue_batch and (args.cancel_run is not None or args.show_results is not None):
+        parser.error("--queue-batch cannot be combined with --cancel-run or --show-results")
+    if args.cancel_run is not None and args.show_results is not None:
+        parser.error("Choose either --cancel-run or --show-results")
     try:
         config = BootstrapConfig.from_environment(os.environ if environ is None else environ)
         client = LocalWebApi(config.web_base_url, config.admin_password)
@@ -359,6 +406,20 @@ def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None
         if args.verify_identities:
             confirmed = verify_identities(client, result["target_id"], (result["user_a_id"], result["user_b_id"]))
             print(f"Identity verification: userA={'pass' if confirmed[0] else 'fail'}, userB={'pass' if confirmed[1] else 'fail'}")
+        if args.queue_batch:
+            run = queue_batch(client, result["project_id"], result["target_id"])
+            run_id = int(run["id"])
+            print(f"Queued batch run_id={run_id} status={run.get('status', 'QUEUED')}")
+            if args.wait:
+                final = wait_for_run(client, result["project_id"], run_id)
+                print(f"Batch run_id={run_id} status={final.get('status', 'UNKNOWN')}")
+        if args.cancel_run is not None:
+            _project_run(client, result["project_id"], args.cancel_run)
+            client.request("POST", f"/api/runs/{args.cancel_run}/cancel")
+            print(f"Cancellation requested for run_id={args.cancel_run}")
+        if args.show_results is not None:
+            counts = result_counts(client, result["project_id"], args.show_results)
+            print("Result conclusions: " + ", ".join(f"{name}={count}" for name, count in sorted(counts.items())))
         return 0
     except BootstrapError as error:
         print(f"Bootstrap failed: {error}", file=sys.stderr)
