@@ -1,0 +1,532 @@
+diff --git a/backend/app/api/workflow_routes.py b/backend/app/api/workflow_routes.py
+index 1378141..3c68488 100644
+--- a/backend/app/api/workflow_routes.py
++++ b/backend/app/api/workflow_routes.py
+@@ -3,7 +3,8 @@
+ from __future__ import annotations
+ 
+ from fastapi import APIRouter, Depends, HTTPException, Request, status
+-from sqlalchemy import func, select
++from pydantic import ValidationError
++from sqlalchemy import select
+ from sqlalchemy.exc import IntegrityError
+ from sqlalchemy.orm import Session
+ 
+@@ -27,6 +28,9 @@ from backend.app.api.workflow_schemas import (
+     ResourceTypeView,
+     ResourceUpdate,
+     ResourceView,
++    ResultEvidenceView,
++    ResultMetadataView,
++    RunResultView,
+     RunCreate,
+     RunView,
+ )
+@@ -429,6 +433,11 @@ def get_matrix(project_id: int, operation_id: int, resource_id: int, _: None = D
+             "actor_identity_id": case.actor_identity_id,
+             "resource_id": case.resource_id,
+             "policy_status": case.policy_status,
++            "operation_id": operation.id,
++            "owner_identity_id": resource.owner_identity_id,
++            "resolved_decision": resolutions[case.actor_identity_id].rule.decision if resolutions[case.actor_identity_id].rule else None,
++            "policy_id": resolutions[case.actor_identity_id].rule.id if resolutions[case.actor_identity_id].rule else None,
++            "policy_version": resolutions[case.actor_identity_id].rule.version if resolutions[case.actor_identity_id].rule else None,
+             "warnings": list(case.warnings),
+         }
+         for case in cases
+@@ -500,7 +509,31 @@ def list_runs(project_id: int, _: None = Depends(require_admin), session: Sessio
+     return [_run_view(session, run) for run in session.scalars(select(Run).where(Run.project_id == project_id).order_by(Run.id.desc()))]
+ 
+ 
+-@router.get("/runs/{run_id}/results")
++def _result_metadata(result: RunResult) -> ResultMetadataView:
++    raw = result.response_metadata
++    if not isinstance(raw, dict):
++        return ResultMetadataView()
++    safe = {}
++    # Validate each observation separately; malformed historical fields are unavailable.
++    for key in ("body_length", "body_truncated", "json_parse_error"):
++        if key in raw:
++            try:
++                safe[key] = getattr(ResultMetadataView.model_validate({key: raw[key]}), key)
++            except ValidationError:
++                pass
++    try:
++        candidate = raw.get("evidence")
++        if not isinstance(candidate, dict) or type(candidate.get("schema_version")) is not int:
++            return ResultMetadataView(**safe)
++        evidence = ResultEvidenceView.model_validate(candidate)
++        if evidence.run_id == result.run_id and evidence.case_key == result.case_key:
++            safe["evidence"] = evidence
++    except ValidationError:
++        pass
++    return ResultMetadataView(**safe)
++
++
++@router.get("/runs/{run_id}/results", response_model=list[RunResultView])
+ def list_results(run_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
+     if session.get(Run, run_id) is None:
+         raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy.")
+@@ -511,16 +544,40 @@ def list_results(run_id: int, _: None = Depends(require_admin), session: Session
+             "authorization_conclusion": result.authorization_conclusion,
+             "reason_codes": result.reason_codes,
+             "http_status": result.http_status,
+-            "response_metadata": result.response_metadata,
++            "response_metadata": _result_metadata(result),
+         }
+         for result in session.scalars(select(RunResult).where(RunResult.run_id == run_id).order_by(RunResult.id))
+     ]
+ 
+ 
+ @router.get("/projects/{project_id}/findings")
+-def list_findings(project_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
++def list_findings(project_id: int, run_id: int | None = None, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
+     require_project(session, project_id)
+-    findings = list(session.scalars(select(Finding).where(Finding.project_id == project_id).order_by(Finding.id.desc())))
++    if run_id is not None:
++        run = session.get(Run, run_id)
++        if run is None or run.project_id != project_id:
++            raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy trong dự án.")
++    # Link only persisted reproductions; never reconstruct case provenance from fingerprints.
++    links_query = (
++        select(FindingReproduction, RunResult)
++        .join(RunResult, FindingReproduction.run_result_id == RunResult.id)
++        .join(Run, RunResult.run_id == Run.id)
++        .join(Finding, FindingReproduction.finding_id == Finding.id)
++        .where(Finding.project_id == project_id, Run.project_id == project_id)
++        .order_by(FindingReproduction.id)
++    )
++    if run_id is not None:
++        links_query = links_query.where(RunResult.run_id == run_id)
++    links: dict[int, list[dict[str, object]]] = {}
++    for reproduction, result in session.execute(links_query):
++        links.setdefault(reproduction.finding_id, []).append({
++            "run_id": result.run_id,
++            "run_result_id": result.id,
++            "case_key": result.case_key,
++            "actor_identity_id": reproduction.actor_identity_id,
++            "resource_id": reproduction.resource_id,
++        })
++    findings = session.scalars(select(Finding).where(Finding.project_id == project_id).order_by(Finding.id.desc()))
+     return [
+         {
+             "id": finding.id,
+@@ -528,9 +585,11 @@ def list_findings(project_id: int, _: None = Depends(require_admin), session: Se
+             "conclusion": finding.conclusion,
+             "operation": {"method": finding.operation_method, "path": finding.operation_path},
+             "policy": {"id": finding.policy_id, "version": finding.policy_version},
+-            "reproduction_count": session.scalar(select(func.count(FindingReproduction.id)).where(FindingReproduction.finding_id == finding.id)) or 0,
++            "reproduction_count": len(links.get(finding.id, [])),
++            "reproductions": links.get(finding.id, []),
+         }
+         for finding in findings
++        if run_id is None or finding.id in links
+     ]
+ 
+ 
+diff --git a/backend/app/api/workflow_schemas.py b/backend/app/api/workflow_schemas.py
+index fdd5a91..10b8372 100644
+--- a/backend/app/api/workflow_schemas.py
++++ b/backend/app/api/workflow_schemas.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++from typing import Literal
++
+ from pydantic import BaseModel, ConfigDict, Field
+ 
+ 
+@@ -125,6 +127,11 @@ class MatrixCaseView(BaseModel):
+     actor_identity_id: int
+     resource_id: int
+     policy_status: str
++    operation_id: int
++    owner_identity_id: int
++    resolved_decision: str | None = None
++    policy_id: int | None = None
++    policy_version: int | None = None
+     warnings: list[str]
+ 
+ 
+@@ -140,3 +147,47 @@ class RunView(BaseModel):
+     status: str
+     snapshot: dict
+     execution_summary: ExecutionSummaryView | None = None
++
++
++class ResultEvidenceView(BaseModel):
++    """Versioned summary only; unknown metadata keys never reach clients."""
++    model_config = ConfigDict(strict=True, extra="ignore")
++    schema_version: Literal[1]
++    engine: Literal["web-evaluator-v1"]
++    run_id: int = Field(gt=0)
++    case_key: str = Field(min_length=1)
++    resource_id: int = Field(gt=0)
++    actor_identity_id: int = Field(gt=0)
++    owner_identity_id: int = Field(gt=0)
++    owner_control_valid: bool
++    owner_http_status: int | None = Field(ge=100, le=599)
++    owner_execution_status: Literal["COMPLETED_RESPONSE", "NETWORK_ERROR", "TIMEOUT", "SCOPE_BLOCKED", "REQUEST_LIMIT_REACHED", "BODY_TRUNCATED", "JSON_PARSE_ERROR", "CANCELLED", "INTERNAL_ERROR"]
++    owner_body_truncated: bool
++    owner_json_parse_error: bool
++    owner_principal_matches: bool
++    actor_principal_matches: bool
++    owner_resource_matches: bool
++    actor_resource_matches: bool
++    owner_restricted_evidence_valid: bool
++    restricted_fields_match_owner: bool
++    policy_id: int | None = Field(gt=0)
++    policy_version: int | None = Field(gt=0)
++    policy_decision: Literal["ALLOW", "DENY", "UNKNOWN"] | None
++    policy_resolution: Literal["RESOLVED", "NO_MATCH", "UNRESOLVED_CONFLICT"]
++
++
++class ResultMetadataView(BaseModel):
++    model_config = ConfigDict(strict=True, extra="ignore")
++    body_length: int | None = Field(default=None, ge=0)
++    body_truncated: bool | None = None
++    json_parse_error: bool | None = None
++    evidence: ResultEvidenceView | None = None
++
++
++class RunResultView(BaseModel):
++    case_key: str | None
++    execution_status: str
++    authorization_conclusion: str
++    reason_codes: list[str]
++    http_status: int | None
++    response_metadata: ResultMetadataView
+diff --git a/backend/app/scanner/classification/evaluator.py b/backend/app/scanner/classification/evaluator.py
+index 47be4e8..1fa25d4 100644
+--- a/backend/app/scanner/classification/evaluator.py
++++ b/backend/app/scanner/classification/evaluator.py
+@@ -24,6 +24,37 @@ class Evaluation:
+     reason_codes: tuple[str, ...]
+ 
+ 
++def meaningful_restricted_value(value: Any) -> bool:
++    """Conservative evidence: every nested leaf must be observable and nonempty."""
++    if value is None:
++        return False
++    if isinstance(value, str):
++        return bool(value.strip())
++    if isinstance(value, (dict, list)):
++        children = value.values() if isinstance(value, dict) else value
++        return bool(value) and all(meaningful_restricted_value(child) for child in children)
++    return isinstance(value, (bool, int, float))
++
++
++def restricted_evidence_valid(body: Any, pointers: tuple[str, ...]) -> bool:
++    try:
++        return bool(pointers) and all(meaningful_restricted_value(resolve_pointer(body, pointer)) for pointer in pointers)
++    except JsonPointerError:
++        return False
++
++
++def restricted_fields_match(owner_body: Any, actor_body: Any, pointers: tuple[str, ...]) -> bool:
++    if not restricted_evidence_valid(owner_body, pointers) or not restricted_evidence_valid(actor_body, pointers):
++        return False
++    try:
++        # JSON types matter: Python otherwise considers True == 1.
++        import json
++        return all(json.dumps(resolve_pointer(owner_body, pointer), sort_keys=True) ==
++                   json.dumps(resolve_pointer(actor_body, pointer), sort_keys=True) for pointer in pointers)
++    except JsonPointerError:
++        return False
++
++
+ def evaluate(
+     *,
+     policy_status: PolicyResolutionStatus,
+@@ -41,6 +72,8 @@ def evaluate(
+         return Evaluation(AuthorizationConclusion.BLOCKED_POLICY_CONFLICT, ("policy.unresolved_conflict",))
+     if policy_status == PolicyResolutionStatus.NO_MATCH or policy_decision is None:
+         return Evaluation(AuthorizationConclusion.INSUFFICIENT_EVIDENCE, ("policy.no_resolved_rule",))
++    if policy_decision == PolicyDecision.UNKNOWN:
++        return Evaluation(AuthorizationConclusion.INSUFFICIENT_EVIDENCE, ("policy.unknown_decision",))
+     if observation.body_truncated or observation.execution_status == ExecutionStatus.BODY_TRUNCATED:
+         return Evaluation(AuthorizationConclusion.NOT_EVALUATED, ("evidence.body_truncated",))
+     if observation.parse_error or observation.execution_status == ExecutionStatus.JSON_PARSE_ERROR:
+@@ -51,20 +84,14 @@ def evaluate(
+         return Evaluation(AuthorizationConclusion.NOT_EVALUATED, ("evidence.json_unobservable",))
+     if not identity_confirmed:
+         return Evaluation(AuthorizationConclusion.INVALID_TEST, ("evidence.principal_mismatch",))
+-    if not owner_control_valid or owner_body is None:
++    if not owner_control_valid or owner_body is None or not restricted_evidence_valid(owner_body, restricted_pointers):
+         return Evaluation(AuthorizationConclusion.INVALID_TEST, ("evidence.owner_control_invalid",))
+     try:
+         resource_matches = str(resolve_pointer(observation.json_body, resource_pointer)) == requested_resource_id
+     except JsonPointerError:
+         resource_matches = False
+     if policy_decision == PolicyDecision.DENY:
+-        matches = []
+-        for pointer in restricted_pointers:
+-            try:
+-                matches.append(resolve_pointer(observation.json_body, pointer) == resolve_pointer(owner_body, pointer))
+-            except JsonPointerError:
+-                matches.append(False)
+-        if resource_matches and matches and all(matches):
++        if resource_matches and restricted_fields_match(owner_body, observation.json_body, restricted_pointers):
+             return Evaluation(AuthorizationConclusion.CONFIRMED_VIOLATION, ("evidence.restricted_fields_match_owner",))
+         if denial_convention:
+             pointer, expected = denial_convention
+diff --git a/backend/app/workers/runner.py b/backend/app/workers/runner.py
+index 7dcc104..f5bde04 100644
+--- a/backend/app/workers/runner.py
++++ b/backend/app/workers/runner.py
+@@ -14,7 +14,7 @@ from backend.app.core.settings import Settings
+ from backend.app.domain.contracts import AuthorizationConclusion, ExecutionStatus, PolicyDecision, RunStatus
+ from backend.app.persistence.models import BatchCaseClaim, Run, RunExecutionStats, RunIdentitySecret, RunResult
+ from backend.app.services.findings import record_confirmed_reproduction
+-from backend.app.scanner.classification.evaluator import Observation, evaluate
++from backend.app.scanner.classification.evaluator import Observation, evaluate, restricted_evidence_valid, restricted_fields_match
+ from backend.app.scanner.classification.json_pointer import JsonPointerError, resolve_pointer
+ from backend.app.scanner.classification.policy import PolicyRule, resolve_policy
+ from backend.app.scanner.execution.http_client import HttpObservation, get_json
+@@ -33,7 +33,8 @@ def _principal_matches(identity: dict[str, object], observation: HttpObservation
+     pointer, expected = identity.get("principal_pointer"), identity.get("expected_principal")
+     if (observation.execution_status != ExecutionStatus.COMPLETED_RESPONSE or observation.status_code is None
+             or not 200 <= observation.status_code < 300 or not isinstance(pointer, str)
+-            or not isinstance(expected, str) or observation.json_body is None):
++            or not isinstance(expected, str) or observation.json_body is None
++            or observation.body_truncated or observation.parse_error):
+         return False
+     try:
+         return str(resolve_pointer(observation.json_body, pointer)) == expected
+@@ -41,6 +42,53 @@ def _principal_matches(identity: dict[str, object], observation: HttpObservation
+         return False
+ 
+ 
++def _resource_matches(body, resource: dict) -> bool:
++    try:
++        return str(resolve_pointer(body, str(resource["resource_id_pointer"]))) == str(resource["external_id"])
++    except JsonPointerError:
++        return False
++
++
++def _owner_control_valid(owner, verification, baseline: HttpObservation, resource: dict) -> bool:
++    return bool(owner is not None and verification is not None and _principal_matches(owner, verification)
++                and baseline.execution_status == ExecutionStatus.COMPLETED_RESPONSE
++                and baseline.status_code is not None and 200 <= baseline.status_code < 300
++                and not baseline.body_truncated and not baseline.parse_error
++                and _resource_matches(baseline.json_body, resource)
++                and restricted_evidence_valid(baseline.json_body, tuple(resource["restricted_pointers"])))
++
++
++def _evidence_metadata(*, run_id, case_key, resource, identity, verification, owner,
++                       owner_verification, baseline, response, resolution, owner_valid):
++    """Fixed-key summary only: no response values, pointers, labels, paths or errors."""
++    return {
++        "body_length": response.body_length,
++        "body_truncated": response.body_truncated,
++        "json_parse_error": response.parse_error,
++        "evidence": {
++            "schema_version": 1, "engine": "web-evaluator-v1",
++            "run_id": run_id, "case_key": case_key,
++            "resource_id": int(resource["id"]), "actor_identity_id": int(identity["id"]),
++            "owner_identity_id": int(resource["owner_identity_id"]),
++            "owner_control_valid": owner_valid,
++            "owner_http_status": baseline.status_code,
++            "owner_execution_status": baseline.execution_status,
++            "owner_body_truncated": baseline.body_truncated,
++            "owner_json_parse_error": baseline.parse_error,
++            "owner_principal_matches": bool(owner and owner_verification and _principal_matches(owner, owner_verification)),
++            "actor_principal_matches": _principal_matches(identity, verification),
++            "owner_resource_matches": _resource_matches(baseline.json_body, resource),
++            "actor_resource_matches": _resource_matches(response.json_body, resource),
++            "owner_restricted_evidence_valid": restricted_evidence_valid(baseline.json_body, tuple(resource["restricted_pointers"])),
++            "restricted_fields_match_owner": restricted_fields_match(baseline.json_body, response.json_body, tuple(resource["restricted_pointers"])),
++            "policy_id": resolution.rule.id if resolution.rule else None,
++            "policy_version": resolution.rule.version if resolution.rule else None,
++            "policy_decision": resolution.rule.decision if resolution.rule else None,
++            "policy_resolution": resolution.status,
++        },
++    }
++
++
+ def _payload_fingerprint(*, execution_status: str, conclusion: str, reason_codes: list[str], http_status: int | None, metadata: dict[str, object]) -> str:
+     stable = repr((execution_status, conclusion, tuple(reason_codes), http_status, sorted(metadata.items())))
+     return sha256(stable.encode("utf-8")).hexdigest()
+@@ -180,17 +228,13 @@ async def _execute_single_run(session: Session, run: Run, settings: Settings) ->
+     operation_path = _concrete_path(str(operation["path"]), str(resource["path_parameter"]), str(resource["external_id"]))
+     baseline = await get_json(base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[owner_id], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
+     owner = next((identity for identity in identities if int(identity["id"]) == owner_id), None)
+-    owner_valid = owner is not None and _principal_matches(owner, verification[owner_id]) and baseline.json_body is not None
+-    try:
+-        owner_valid = owner_valid and str(resolve_pointer(baseline.json_body, str(resource["resource_id_pointer"]))) == str(resource["external_id"])
+-    except JsonPointerError:
+-        owner_valid = False
++    owner_valid = _owner_control_valid(owner, verification.get(owner_id), baseline, resource)
+     rules = [PolicyRule(int(item["id"]), int(item["version"]), int(item["operation_id"]), int(item["resource_type_id"]), item["identity_id"], item["role"], item["resource_id"], PolicyDecision(item["decision"])) for item in policies]
+     for identity in identities:
+         response = await get_json(base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[int(identity["id"])], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
+         resolution = resolve_policy(rules, operation_id=int(policies[0]["operation_id"]) if policies else -1, resource_type_id=int(resource["resource_type_id"]), identity_id=int(identity["id"]), role=identity.get("role"), resource_id=int(resource["id"]))
+         evaluation = evaluate(policy_status=resolution.status, policy_decision=resolution.rule.decision if resolution.rule else None, identity_confirmed=_principal_matches(identity, verification[int(identity["id"])]), owner_control_valid=owner_valid, requested_resource_id=str(resource["external_id"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), owner_body=baseline.json_body, observation=_as_observation(response))
+-        result = RunResult(run_id=run.id, case_key=f"resource:{resource['id']}:actor:{identity['id']}", execution_status=response.execution_status, authorization_conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, response_metadata={"body_length": response.body_length, "body_truncated": response.body_truncated, "json_parse_error": response.parse_error})
++        result = RunResult(run_id=run.id, case_key=f"resource:{resource['id']}:actor:{identity['id']}", execution_status=response.execution_status, authorization_conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, response_metadata=_evidence_metadata(run_id=run.id, case_key=f"resource:{resource['id']}:actor:{identity['id']}", resource=resource, identity=identity, verification=verification[int(identity["id"])], owner=owner, owner_verification=verification.get(owner_id), baseline=baseline, response=response, resolution=resolution, owner_valid=owner_valid))
+         session.add(result); session.flush()
+         if evaluation.conclusion == AuthorizationConclusion.CONFIRMED_VIOLATION and resolution.rule is not None:
+             record_confirmed_reproduction(session, project_id=run.project_id, run_result=result, actor_identity_id=int(identity["id"]), resource_id=int(resource["id"]), operation_path=str(operation["path"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), policy=resolution.rule)
+@@ -243,16 +287,14 @@ async def _execute_batch_run(session: Session, run: Run, settings: Settings) ->
+             fail_run(session, run.id); return
+         baseline = await _tracked_get(session, run, stats, base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[owner_id], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
+         if baseline is None: return
+-        owner_valid = _principal_matches(owner, verification[owner_id]) and baseline.json_body is not None
+-        try: owner_valid = owner_valid and str(resolve_pointer(baseline.json_body, str(resource["resource_id_pointer"]))) == str(resource["external_id"])
+-        except JsonPointerError: owner_valid = False
++        owner_valid = _owner_control_valid(owner, verification.get(owner_id), baseline, resource)
+         for identity in identities:
+             response = await _tracked_get(session, run, stats, base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[int(identity["id"])], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
+             if response is None: return
+             identity_id = int(identity["id"])
+             resolution = resolve_policy(rules, operation_id=operation_id, resource_type_id=resource_type_id, identity_id=identity_id, role=identity.get("role") if isinstance(identity.get("role"), str) else None, resource_id=resource_id)
+             evaluation = evaluate(policy_status=resolution.status, policy_decision=resolution.rule.decision if resolution.rule else None, identity_confirmed=_principal_matches(identity, verification[identity_id]), owner_control_valid=owner_valid, requested_resource_id=str(resource["external_id"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), owner_body=baseline.json_body, observation=_as_observation(response))
+-            result = _record_batch_result(session, run=run, case_key=f"operation:{operation_id}:resource:{resource_id}:actor:{identity_id}", execution_status=response.execution_status, conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, metadata={"body_length": response.body_length, "body_truncated": response.body_truncated, "json_parse_error": response.parse_error})
++            result = _record_batch_result(session, run=run, case_key=f"operation:{operation_id}:resource:{resource_id}:actor:{identity_id}", execution_status=response.execution_status, conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, metadata=_evidence_metadata(run_id=run.id, case_key=f"operation:{operation_id}:resource:{resource_id}:actor:{identity_id}", resource=resource, identity=identity, verification=verification[identity_id], owner=owner, owner_verification=verification.get(owner_id), baseline=baseline, response=response, resolution=resolution, owner_valid=owner_valid))
+             if result is None: return
+             if evaluation.conclusion == AuthorizationConclusion.CONFIRMED_VIOLATION and resolution.rule is not None:
+                 record_confirmed_reproduction(session, project_id=run.project_id, run_result=result, actor_identity_id=identity_id, resource_id=resource_id, operation_path=str(operation["path"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), policy=resolution.rule)
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index a2166b0..78decba 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1,4 +1,4 @@
+-import { type ReactNode, useEffect, useState } from "react";
++import { type ReactNode, useEffect, useRef, useState } from "react";
+ 
+ import { api, type BatchMatrix, type ExternalLabJob, type Finding, type Identity, type MatrixCase, type Operation, type OperationResourceMapping, type Policy, type Project, type Resource, type ResourceType, type Result, type Run, type Target } from "./api";
+ 
+@@ -33,13 +33,16 @@ export function App() {
+   const [findings, setFindings] = useState<Finding[]>([]);
+   const [externalLabJobs, setExternalLabJobs] = useState<ExternalLabJob[]>([]);
+   const { notice, setNotice, perform } = useAction();
++  const projectGeneration = useRef(0);
+   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null;
+   const target = targets[0] ?? null;
+ 
+   async function refreshProject(projectId: number) {
++    const generation = ++projectGeneration.current;
+     const [nextTargets, nextIdentities, nextOperations, nextTypes, nextResources, nextPolicies, nextMappings, nextRuns, nextFindings, nextExternalLabJobs] = await Promise.all([
+       api.targets(projectId), api.identities(projectId), api.operations(projectId), api.resourceTypes(projectId), api.resources(projectId), api.policies(projectId), api.operationResourceMappings(projectId), api.runs(projectId), api.findings(projectId), api.externalLabJobs(projectId),
+     ]);
++    if (generation !== projectGeneration.current) return;
+     setTargets(nextTargets); setIdentities(nextIdentities); setOperations(nextOperations); setResourceTypes(nextTypes); setResources(nextResources); setPolicies(nextPolicies); setMappings(nextMappings); setRuns(nextRuns); setFindings(nextFindings); setExternalLabJobs(nextExternalLabJobs);
+   }
+ 
+@@ -71,7 +74,7 @@ export function App() {
+     <section className="workspace">{!activeProject ? <Empty title="Chưa có dự án" text="Tạo dự án để bắt đầu thiết lập lab." /> : <>
+       <ProjectHeading project={activeProject} onSaved={async (next) => { await refreshProjects(next.id); setNotice({ kind: "success", text: "Đã cập nhật dự án. Các lượt chạy lịch sử không thay đổi." }); }} />
+       {notice && <Notice notice={notice} />}
+-      <div className="station-grid">
++      <nav className="workflow-nav" aria-label="Các bước kiểm thử"><a href="#station-01">Thiết lập</a><a href="#station-05">Ma trận</a><a href="#station-06">Thực thi & findings</a><a href="#comparison">So sánh</a><a href="#station-07">Bridge tùy chọn</a></nav><div className="station-grid" key={activeProject.id}>
+         <Station number="01" title="API đích có phạm vi" detail="Chỉ chấp nhận IP/CIDR, port và đường dẫn đã allowlist."><TargetPanel projectId={activeProject.id} targets={targets} onChanged={async () => { await refreshProject(activeProject.id); setMatrix([]); }} onNotice={setNotice} /></Station>
+         <Station number="02" title="Danh tính độc lập" detail="Mỗi bearer token dùng một context riêng; anonymous không kế thừa gì."><IdentityPanel projectId={activeProject.id} target={target} identities={identities} onChanged={async () => { await refreshProject(activeProject.id); setMatrix([]); }} onNotice={setNotice} /></Station>
+         <Station number="03" title="OpenAPI và operation GET" detail="Tải OpenAPI JSON cục bộ. Chỉ operation GET được chọn mới có thể chạy."><OpenApiPanel projectId={activeProject.id} operations={operations} onChanged={async () => { await refreshProject(activeProject.id); setMatrix([]); }} onNotice={setNotice} /></Station>
+@@ -80,13 +83,14 @@ export function App() {
+         <Station number="06" title="Batch run và bằng chứng" detail="Queue toàn bộ mapping GET đã bật; worker tạo đối chứng fresh cho từng resource."><RunPanel projectId={activeProject.id} targets={targets} mappings={mappings} runs={runs} results={results} findings={findings} onRuns={setRuns} onResults={setResults} onFindings={setFindings} onNotice={setNotice} /></Station>
+         <Station number="07" title="Xác minh lab read-only bên ngoài" detail="Bridge do operator vận hành, chỉ chạy VAmPI local read-only; không chạy BFLA, ZAP hay Docker."><ExternalLabPanel projectId={activeProject.id} jobs={externalLabJobs} onJobs={setExternalLabJobs} onNotice={setNotice} /></Station>
+       </div>
++      <section id="comparison" className="station"><h3>So sánh phương pháp</h3><p>Chưa kết nối nguồn comparison đã xác minh. Các trạng thái dưới đây chỉ mô tả dữ liệu hiện có trên web, không kết luận về artifacts bên ngoài.</p><table><thead><tr><th>Phương pháp</th><th>Nguồn</th><th>Trạng thái</th><th>Thời gian</th></tr></thead><tbody>{["Custom CLI", "Manual", "OWASP ZAP", "Disposable BFLA"].map((method) => <tr key={method}><td>{method}</td><td>Chưa có nguồn đã xác minh trên web</td><td>NOT_RUN</td><td>NO_TIMING</td></tr>)}</tbody></table></section>
+     </>}</section>
+   </main>;
+ }
+ 
+ function Notice({ notice }: { notice: Exclude<Notice, null> }) { return <div role="status" className={`notice ${notice.kind}`}>{notice.text}</div>; }
+ function Empty({ title, text }: { title: string; text: string }) { return <div className="empty"><h2>{title}</h2><p>{text}</p></div>; }
+-function Station({ number, title, detail, children }: { number: string; title: string; detail: string; children: ReactNode }) { return <article className="station"><header><span>{number}</span><div><h3>{title}</h3><p>{detail}</p></div></header>{children}</article>; }
++function Station({ number, title, detail, children }: { number: string; title: string; detail: string; children: ReactNode }) { return <article id={`station-${number}`} className="station"><header><span>{number}</span><div><h3>{title}</h3><p>{detail}</p></div></header>{children}</article>; }
+ 
+ function ProjectForm({ onCreated }: { onCreated: (project: Project) => void }) {
+   const [name, setName] = useState(""); const [description, setDescription] = useState(""); const [error, setError] = useState("");
+@@ -141,34 +145,53 @@ function MatrixPanel({ projectId, operations, types, resources, identities, poli
+   const selectedMapping = mappings.find((mapping) => mapping.operation_id === Number(operationId) && mapping.resource_type_id === Number(typeId));
+   async function addMapping() { await api.createOperationResourceMapping(projectId, { operation_id: Number(operationId), resource_type_id: Number(typeId), selected: true }); await onChanged(); onNotice({ kind: "success", text: "Đã thêm mapping GET vào phạm vi batch." }); }
+   async function toggleMapping() { if (!selectedMapping) return; await api.updateOperationResourceMapping(selectedMapping.id, !selectedMapping.selected); await onChanged(); onNotice({ kind: "success", text: `Đã ${selectedMapping.selected ? "tắt" : "bật"} mapping batch.` }); }
++  const [subjectKind, setSubjectKind] = useState("identity"); const [policyResource, setPolicyResource] = useState("");
+   const [decision, setDecision] = useState<Policy["decision"]>("ALLOW"); const [subject, setSubject] = useState("");
+   const selectedType = types.find((item) => item.id === Number(typeId));
+   useEffect(() => { if (!operationId && operations.find((item) => item.selected)) setOperationId(String(operations.find((item) => item.selected)?.id)); }, [operations, operationId]);
+   useEffect(() => { if (!typeId && types[0]) setTypeId(String(types[0].id)); }, [types, typeId]);
+   useEffect(() => { if (!resourceId && resources.find((item) => item.resource_type_id === Number(typeId))) setResourceId(String(resources.find((item) => item.resource_type_id === Number(typeId))?.id)); }, [resources, typeId, resourceId]);
+-  useEffect(() => { if (selectedPolicy) { setDecision(selectedPolicy.decision); setSubject(String(selectedPolicy.identity_id ?? "")); setOperationId(String(selectedPolicy.operation_id)); setTypeId(String(selectedPolicy.resource_type_id)); } }, [selectedPolicy]);
+-  function resetPolicy() { setPolicyId(""); setDecision("ALLOW"); setSubject(""); }
++  useEffect(() => { if (selectedPolicy) { setDecision(selectedPolicy.decision); setSubjectKind(selectedPolicy.role !== null ? "role" : "identity"); setSubject(selectedPolicy.role ?? String(selectedPolicy.identity_id ?? "")); setPolicyResource(String(selectedPolicy.resource_id ?? "")); setOperationId(String(selectedPolicy.operation_id)); setTypeId(String(selectedPolicy.resource_type_id)); } }, [selectedPolicy]);
++  function resetPolicy() { setPolicyId(""); setDecision("ALLOW"); setSubject(""); setSubjectKind("identity"); setPolicyResource(""); }
+   const canMatrix = Boolean(operationId && resourceId);
+   const canMap = Boolean(operationId && typeId);
+-  return <div className="panel-content"><div className="compact-form"><label>Batch operation-resource mapping<select value={operationId} onChange={(event) => setOperationId(event.target.value)}><option value="">Chọn operation GET</option>{operations.filter((operation) => operation.selected).map((operation) => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></label><label>Loại resource cho batch<select value={typeId} onChange={(event) => setTypeId(event.target.value)}><option value="">Chọn loại resource</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label><div className="actions">{selectedMapping ? <button disabled={!canMap} onClick={() => void toggleMapping()}>{selectedMapping.selected ? "Tắt mapping batch" : "Bật mapping batch"}</button> : <button disabled={!canMap} onClick={() => void addMapping()}>Thêm mapping batch</button>}</div></div>{mappings.length > 0 && <ul className="matrix-list">{mappings.map((mapping) => <li key={mapping.id}><b>{mapping.selected ? "BATCH ENABLED" : "BATCH DISABLED"}</b><span>{operations.find((operation) => operation.id === mapping.operation_id)?.path ?? `Operation #${mapping.operation_id}`}</span><span>{types.find((type) => type.id === mapping.resource_type_id)?.name ?? `Type #${mapping.resource_type_id}`}</span></li>)}</ul>}<div className="divider" /><form className="compact-form" onSubmit={(event) => { event.preventDefault(); const value = { operation_id: Number(operationId), resource_type_id: Number(typeId), decision, identity_id: Number(subject), role: null, resource_id: null }; const request = selectedPolicy ? api.updatePolicy(selectedPolicy.id, value) : api.createPolicy(projectId, value); request.then(async () => { await onChanged(); resetPolicy(); onNotice({ kind: "success", text: `Đã ${selectedPolicy ? "cập nhật" : "lưu"} policy; ma trận cần sinh lại và chỉ run mới dùng policy này.` }); }).catch((error: unknown) => onNotice(errorNotice(error))); }}><label>Policy đang sửa<select value={policyId} onChange={(event) => setPolicyId(event.target.value)}><option value="">Tạo policy mới</option>{policies.map((policy) => <option key={policy.id} value={policy.id}>#{policy.id} v{policy.version} · {policy.decision}</option>)}</select></label><label>Operation<select value={operationId} onChange={(event) => setOperationId(event.target.value)} required><option value="">Chọn operation</option>{operations.filter((operation) => operation.selected).map((operation) => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></label><label>Loại resource<select value={typeId} onChange={(event) => { setTypeId(event.target.value); setResourceId(""); }} required><option value="">Chọn loại</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label><label>Danh tính áp dụng<select value={subject} onChange={(event) => setSubject(event.target.value)} required><option value="">Chọn danh tính</option>{identities.map((identity) => <option key={identity.id} value={identity.id}>{identity.display_name}</option>)}</select></label><label>Quyết định<select value={decision} onChange={(event) => setDecision(event.target.value as Policy["decision"])}><option>ALLOW</option><option>DENY</option><option>UNKNOWN</option></select></label><div className="actions"><button>{selectedPolicy ? "Lưu policy" : "Tạo policy"}</button>{selectedPolicy && <button type="button" className="quiet" onClick={resetPolicy}>Tạo policy khác</button>}</div></form><div className="divider" /><label>Resource cho ma trận<select value={resourceId} onChange={(event) => setResourceId(event.target.value)} required><option value="">Chọn resource</option>{resources.filter((resource) => resource.resource_type_id === selectedType?.id).map((resource) => <option key={resource.id} value={resource.id}>{resource.external_id}</option>)}</select></label><button disabled={!canMatrix} onClick={() => api.matrix(projectId, Number(operationId), Number(resourceId)).then(onMatrix).catch((error: unknown) => onNotice(errorNotice(error)))}>Sinh ma trận read-only</button>{matrix.length > 0 && <ul className="matrix-list">{matrix.map((item) => <li key={item.case_key}><b>{item.control_type}</b><span>actor #{item.actor_identity_id}</span><span>{item.policy_status}</span>{item.warnings.map((warning) => <em key={warning}>{warning}</em>)}</li>)}</ul>}</div>;
++  return <div className="panel-content"><div className="compact-form"><label>Batch operation-resource mapping<select value={operationId} onChange={(event) => setOperationId(event.target.value)}><option value="">Chọn operation GET</option>{operations.filter((operation) => operation.selected).map((operation) => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></label><label>Loại resource cho batch<select value={typeId} onChange={(event) => setTypeId(event.target.value)}><option value="">Chọn loại resource</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label><div className="actions">{selectedMapping ? <button disabled={!canMap} onClick={() => void toggleMapping()}>{selectedMapping.selected ? "Tắt mapping batch" : "Bật mapping batch"}</button> : <button disabled={!canMap} onClick={() => void addMapping()}>Thêm mapping batch</button>}</div></div>{mappings.length > 0 && <ul className="matrix-list">{mappings.map((mapping) => <li key={mapping.id}><b>{mapping.selected ? "BATCH ENABLED" : "BATCH DISABLED"}</b><span>{operations.find((operation) => operation.id === mapping.operation_id)?.path ?? `Operation #${mapping.operation_id}`}</span><span>{types.find((type) => type.id === mapping.resource_type_id)?.name ?? `Type #${mapping.resource_type_id}`}</span></li>)}</ul>}<div className="divider" /><form className="compact-form" onSubmit={(event) => { event.preventDefault(); const value = { operation_id: Number(operationId), resource_type_id: Number(typeId), decision, identity_id: subjectKind === "identity" ? Number(subject) : null, role: subjectKind === "role" ? subject : null, resource_id: policyResource ? Number(policyResource) : null }; const request = selectedPolicy ? api.updatePolicy(selectedPolicy.id, value) : api.createPolicy(projectId, value); request.then(async () => { await onChanged(); resetPolicy(); onNotice({ kind: "success", text: `Đã ${selectedPolicy ? "cập nhật" : "lưu"} policy; ma trận cần sinh lại và chỉ run mới dùng policy này.` }); }).catch((error: unknown) => onNotice(errorNotice(error))); }}><label>Policy đang sửa<select value={policyId} onChange={(event) => setPolicyId(event.target.value)}><option value="">Tạo policy mới</option>{policies.map((policy) => <option key={policy.id} value={policy.id}>#{policy.id} v{policy.version} · {policy.decision}</option>)}</select></label><label>Operation<select value={operationId} onChange={(event) => setOperationId(event.target.value)} required><option value="">Chọn operation</option>{operations.filter((operation) => operation.selected).map((operation) => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></label><label>Loại resource<select value={typeId} onChange={(event) => { setTypeId(event.target.value); setResourceId(""); setPolicyResource(""); }} required><option value="">Chọn loại</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label><label>Chủ thể policy<select value={subjectKind} onChange={(event) => { setSubjectKind(event.target.value); setSubject(""); }}><option value="identity">Danh tính</option><option value="role">Role</option></select></label>{subjectKind === "identity" ? <label>Danh tính áp dụng<select value={subject} onChange={(event) => setSubject(event.target.value)} required><option value="">Chọn danh tính</option>{identities.map((identity) => <option key={identity.id} value={identity.id}>{identity.display_name}</option>)}</select></label> : <label>Role áp dụng<input value={subject} onChange={(event) => setSubject(event.target.value)} required list="policy-roles" /><datalist id="policy-roles">{[...new Set(identities.map((identity) => identity.role).filter(Boolean))].map((role) => <option key={role} value={role!} />)}</datalist></label>}<label>Phạm vi resource<select value={policyResource} onChange={(event) => setPolicyResource(event.target.value)}><option value="">Toàn bộ loại resource</option>{resources.filter((resource) => resource.resource_type_id === Number(typeId)).map((resource) => <option key={resource.id} value={resource.id}>{resource.external_id}</option>)}</select></label><label>Quyết định<select value={decision} onChange={(event) => setDecision(event.target.value as Policy["decision"])}><option>ALLOW</option><option>DENY</option><option>UNKNOWN</option></select></label><div className="actions"><button>{selectedPolicy ? "Lưu policy" : "Tạo policy"}</button>{selectedPolicy && <button type="button" className="quiet" onClick={resetPolicy}>Tạo policy khác</button>}</div></form><div className="divider" /><label>Resource cho ma trận<select value={resourceId} onChange={(event) => setResourceId(event.target.value)} required><option value="">Chọn resource</option>{resources.filter((resource) => resource.resource_type_id === selectedType?.id).map((resource) => <option key={resource.id} value={resource.id}>{resource.external_id}</option>)}</select></label><button disabled={!canMatrix} onClick={() => api.matrix(projectId, Number(operationId), Number(resourceId)).then(onMatrix).catch((error: unknown) => onNotice(errorNotice(error)))}>Sinh ma trận read-only</button>{matrix.length > 0 && <ul className="matrix-list">{matrix.map((item) => <li key={item.case_key}><b>{item.control_type}</b><span>actor #{item.actor_identity_id}</span><span>owner #{item.owner_identity_id} · operation #{item.operation_id}</span><span>{item.resolved_decision ?? "Chưa phân giải"} · {item.policy_status}</span><span>Policy {item.policy_id ?? "—"} / v{item.policy_version ?? "—"}</span>{item.warnings.map((warning) => <em key={warning}>{warning}</em>)}</li>)}</ul>}</div>;
+ }
+ 
+ function ExternalLabPanel({ projectId, jobs, onJobs, onNotice }: { projectId: number; jobs: ExternalLabJob[]; onJobs: (jobs: ExternalLabJob[]) => void; onNotice: (notice: Notice) => void }) {
++  const lock = useRef(false); const [pending, setPending] = useState(false);
++  async function queue() { if (lock.current) return; lock.current = true; setPending(true); try { const job = await api.createReadOnlyExternalLabJob(projectId); onJobs([job, ...jobs]); onNotice({ kind: "info", text: "Đã xếp read-only external lab job cho bridge của operator." }); } catch (error) { onNotice(errorNotice(error)); } finally { lock.current = false; setPending(false); } }
+   const active = jobs.some((job) => ["QUEUED", "DISPATCHING", "SUBMITTED", "RUNNING", "CANCEL_REQUESTED"].includes(job.status));
+   useEffect(() => {
+     if (!active) return;
+-    const timer = window.setInterval(() => api.externalLabJobs(projectId).then(onJobs).catch(() => undefined), 1000);
+-    return () => window.clearInterval(timer);
++    let current = true; let attempts = 0; let timer: number;
++    async function poll() { try { const next = await api.externalLabJobs(projectId); if (current) onJobs(next); } catch (error) { if (current) onNotice(errorNotice(error)); } if (current && ++attempts < 300) timer = window.setTimeout(poll, 2000); }
++    timer = window.setTimeout(poll, 2000);
++    return () => { current = false; window.clearTimeout(timer); };
+   }, [active, projectId, onJobs]);
+-  return <div className="panel-content"><section className="finding-groups"><h4>Operator-side bridge only</h4><p>Chỉ queue workflow VAmPI local read-only cố định. Không có command, target, token, log hay artifact path trong giao diện.</p><p>Nếu bridge chưa được operator cấu hình, yêu cầu queue sẽ bị từ chối an toàn và không có local fallback.</p><p>BFLA disposable, ZAP runtime và Docker vẫn là operator-only và không thể chạy tại đây.</p></section><button disabled={active} onClick={() => api.createReadOnlyExternalLabJob(projectId).then((job) => { onJobs([job, ...jobs]); onNotice({ kind: "info", text: "Đã xếp read-only external lab job cho bridge của operator." }); }).catch((error: unknown) => onNotice(errorNotice(error)))}>Queue read-only verification</button>{jobs.length > 0 && <ul className="run-list">{jobs.map((job) => <li key={job.public_id}><div><b>Lab job {job.public_id.slice(0, 8)}</b><span className={`status ${job.status.toLowerCase()}`}>{job.status}</span></div><p className="run-summary">{job.failure_code ? `failure ${job.failure_code}` : "No raw output is retained."}{job.artifact_manifest_sha256 ? " · redacted manifest verified" : ""}</p>{Object.keys(job.result_summary).length > 0 && <p className="run-summary">{typeof job.result_summary.case_count === "number" ? `cases ${job.result_summary.case_count}` : "Summary received."}</p>}{["QUEUED", "DISPATCHING", "SUBMITTED", "RUNNING"].includes(job.status) && <button className="quiet" onClick={() => api.cancelExternalLabJob(job.public_id).then(() => api.externalLabJobs(projectId).then(onJobs)).catch((error: unknown) => onNotice(errorNotice(error)))}>Dừng</button>}</li>)}</ul>}</div>;
++  return <div className="panel-content"><section className="finding-groups"><h4>Operator-side bridge only</h4><p>Chỉ queue workflow VAmPI local read-only cố định. Không có command, target, token, log hay artifact path trong giao diện.</p><p>Nếu bridge chưa được operator cấu hình, yêu cầu queue sẽ bị từ chối an toàn và không có local fallback.</p><p>BFLA disposable, ZAP runtime và Docker vẫn là operator-only và không thể chạy tại đây.</p></section><button disabled={active || pending} onClick={() => void queue()}>Queue read-only verification</button>{jobs.length > 0 && <ul className="run-list">{jobs.map((job) => <li key={job.public_id}><div><b>Lab job {job.public_id.slice(0, 8)}</b><span className={`status ${job.status.toLowerCase()}`}>{job.status}</span></div><p className="run-summary">{job.failure_code ? `failure ${job.failure_code}` : "No raw output is retained."}{job.artifact_manifest_sha256 ? " · redacted manifest verified" : ""}</p>{Object.keys(job.result_summary).length > 0 && <p className="run-summary">{typeof job.result_summary.case_count === "number" ? `cases ${job.result_summary.case_count}` : "Summary received."}</p>}{["QUEUED", "DISPATCHING", "SUBMITTED", "RUNNING"].includes(job.status) && <button className="quiet" onClick={() => api.cancelExternalLabJob(job.public_id).then(() => api.externalLabJobs(projectId).then(onJobs)).catch((error: unknown) => onNotice(errorNotice(error)))}>Dừng</button>}</li>)}</ul>}</div>;
+ }
+ 
+ function RunPanel({ projectId, targets, mappings, runs, results, findings, onRuns, onResults, onFindings, onNotice }: { projectId: number; targets: Target[]; mappings: OperationResourceMapping[]; runs: Run[]; results: Result[]; findings: Finding[]; onRuns: (runs: Run[]) => void; onResults: (results: Result[]) => void; onFindings: (findings: Finding[]) => void; onNotice: (notice: Notice) => void }) {
++  const selectedRun = useRef<number | null>(null); const [viewingRun, setViewingRun] = useState<number | null>(null); const actionLock = useRef(false); const [pending, setPending] = useState(false);
++  async function guarded(work: () => Promise<void>) { if (actionLock.current) return; actionLock.current = true; setPending(true); try { await work(); } catch (error) { onNotice(errorNotice(error)); } finally { actionLock.current = false; setPending(false); } }
+   const [targetId, setTargetId] = useState(""); const [plan, setPlan] = useState<BatchMatrix | null>(null); const latest = runs[0];
+   useEffect(() => { if (!targetId && targets[0]) setTargetId(String(targets[0].id)); }, [targets, targetId]);
+-  useEffect(() => { setPlan(null); if (!targetId) return; api.batchMatrix(projectId, Number(targetId)).then(setPlan).catch(() => setPlan(null)); }, [projectId, targetId, mappings]);
+-  useEffect(() => { if (!latest || ["COMPLETED", "FAILED", "CANCELLED", "INTERRUPTED"].includes(latest.status)) return; const timer = window.setInterval(() => api.runs(projectId).then(onRuns).catch(() => undefined), 1000); return () => window.clearInterval(timer); }, [latest?.id, latest?.status, projectId, onRuns]);
+-  async function viewRun(runId: number) { try { const [nextResults, nextFindings] = await Promise.all([api.results(runId), api.findings(projectId)]); onResults(nextResults); onFindings(nextFindings); } catch (error) { onNotice(errorNotice(error)); } }
++  useEffect(() => { let current = true; setPlan(null); if (targetId) api.batchMatrix(projectId, Number(targetId)).then((next) => { if (current) setPlan(next); }).catch((error: unknown) => { if (current) onNotice(errorNotice(error)); }); return () => { current = false; }; }, [projectId, targetId, mappings]);
++  useEffect(() => { if (!latest || ["COMPLETED", "FAILED", "CANCELLED", "INTERRUPTED"].includes(latest.status)) return; let current = true; let attempts = 0; let timer: number; async function poll() { if (!current) return; try { const next = await api.runs(projectId); if (current) onRuns(next); } catch (error) { if (current) onNotice(errorNotice(error)); } if (current && ++attempts < 300) timer = window.setTimeout(poll, 2000); } timer = window.setTimeout(poll, 2000); return () => { current = false; window.clearTimeout(timer); }; }, [latest?.id, latest?.status, projectId, onRuns]);
++  async function viewRun(runId: number) { selectedRun.current = runId; setViewingRun(runId); onResults([]); onFindings([]); try { const [nextResults, nextFindings] = await Promise.all([api.results(runId), api.findings(projectId, runId)]); if (selectedRun.current === runId) { onResults(nextResults); onFindings(nextFindings); } } catch (error) { onNotice(errorNotice(error)); } }
+   const ready = Boolean(targetId && plan?.within_request_limit && plan.concrete_target_count > 0);
+-  return <div className="panel-content"><div className="compact-form"><label>API đích<select value={targetId} onChange={(event) => setTargetId(event.target.value)}><option value="">Chọn API</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.base_url}</option>)}</select></label></div>{plan ? <section className="finding-groups"><h4>Batch preview</h4><p>{plan.identity_count} danh tính · {plan.concrete_target_count} resource-operation · {plan.actor_case_count} actor cases</p><p>{plan.identity_verifications} xác minh + {plan.owner_baselines} owner baseline + {plan.actor_case_count} actor request = <b>{plan.planned_attempts}/{plan.request_limit}</b> planned attempts.</p>{plan.targets.map((item) => <p key={`${item.operation_id}-${item.resource_type_id}`}><code>GET {item.operation_path}</code> · {item.resource_type_name}: {item.resource_count} resource, {item.actor_case_count} case</p>)}</section> : <p>Chọn API đích và bật mapping GET để xem batch preview.</p>}<button disabled={!ready} onClick={() => api.createBatchRun(projectId, Number(targetId)).then((run) => { onRuns([run, ...runs]); onNotice({ kind: "info", text: "Đã xếp batch run. Worker chỉ dùng mapping và resource đã snapshot." }); }).catch((error: unknown) => onNotice(errorNotice(error)))}>Queue all selected GET mappings</button>{runs.length > 0 && <ul className="run-list">{runs.map((run) => <li key={run.id}><div><b>Run #{run.id}</b><span className={`status ${run.status.toLowerCase()}`}>{run.status}</span></div><div className="actions"><button className="quiet" onClick={() => void viewRun(run.id)}>Xem kết quả</button>{["QUEUED", "RUNNING"].includes(run.status) && <button className="quiet" onClick={() => api.cancelRun(run.id).then(() => api.runs(projectId).then(onRuns)).catch((error: unknown) => onNotice(errorNotice(error)))}>Dừng</button>}</div>{run.execution_summary && <p className="run-summary">planned {run.execution_summary.planned_attempts} · transport {run.execution_summary.transport_attempts} · responses {run.execution_summary.completed_responses} · scope {run.execution_summary.scope_blocked} · errors {run.execution_summary.transport_errors} · cancelled {run.execution_summary.cancelled_cases}</p>}</li>)}</ul>}{results.length > 0 && <table><thead><tr><th>Case</th><th>Execution</th><th>Kết luận</th><th>HTTP</th></tr></thead><tbody>{results.map((result) => <tr key={result.case_key}><td>{result.case_key}</td><td>{result.execution_status}</td><td>{result.authorization_conclusion}</td><td>{result.http_status ?? "—"}</td></tr>)}</tbody></table>}{findings.length > 0 && <section className="finding-groups" aria-labelledby="finding-groups-title"><h4 id="finding-groups-title">Nhóm phát hiện đã xác nhận</h4><p>Nhóm theo policy và mapping ổn định; không hiển thị danh tính, resource ID hoặc dữ liệu nhạy cảm.</p><ul>{findings.map((finding) => <li key={finding.id}><div><b>{finding.conclusion}</b><code>{finding.operation.method} {finding.operation.path}</code><span>Policy #{finding.policy.id} · phiên bản {finding.policy.version}</span></div><strong>{finding.reproduction_count} lần tái hiện</strong></li>)}</ul></section>}</div>;
++  return <div className="panel-content"><div className="compact-form"><label>API đích<select value={targetId} onChange={(event) => setTargetId(event.target.value)}><option value="">Chọn API</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.base_url}</option>)}</select></label></div>{plan ? <section className="finding-groups"><h4>Batch preview</h4><p>{plan.identity_count} danh tính · {plan.concrete_target_count} resource-operation · {plan.actor_case_count} actor cases</p><p>{plan.identity_verifications} xác minh + {plan.owner_baselines} owner baseline + {plan.actor_case_count} actor request = <b>{plan.planned_attempts}/{plan.request_limit}</b> planned attempts.</p>{plan.targets.map((item) => <p key={`${item.operation_id}-${item.resource_type_id}`}><code>GET {item.operation_path}</code> · {item.resource_type_name}: {item.resource_count} resource, {item.actor_case_count} case</p>)}</section> : <p>Chọn API đích và bật mapping GET để xem batch preview.</p>}<button disabled={!ready || pending} onClick={() => void guarded(async () => { await api.createBatchRun(projectId, Number(targetId)).then((run) => { onRuns([run, ...runs]); onNotice({ kind: "info", text: "Đã xếp batch run. Worker chỉ dùng mapping và resource đã snapshot." }); }).catch((error: unknown) => onNotice(errorNotice(error))); })}>Queue all selected GET mappings</button>{runs.length > 0 && <ul className="run-list">{runs.map((run) => <li key={run.id}><div><b>Run #{run.id}</b><span className={`status ${run.status.toLowerCase()}`}>{run.status}</span></div><div className="actions"><button className="quiet" onClick={() => void viewRun(run.id)}>Xem kết quả</button>{["QUEUED", "RUNNING"].includes(run.status) && <button disabled={pending} className="quiet" onClick={() => void guarded(async () => { await api.cancelRun(run.id).then(() => api.runs(projectId).then(onRuns)).catch((error: unknown) => onNotice(errorNotice(error))); })}>Dừng</button>}</div>{run.execution_summary && <p className="run-summary">planned {run.execution_summary.planned_attempts} · transport {run.execution_summary.transport_attempts} · responses {run.execution_summary.completed_responses} · scope {run.execution_summary.scope_blocked} · errors {run.execution_summary.transport_errors} · cancelled {run.execution_summary.cancelled_cases}</p>}</li>)}</ul>}{viewingRun !== null && <p role="status">Kết quả run #{viewingRun} · {results.length} cases · {findings.length} nhóm findings</p>}{results.length > 0 && <table><thead><tr><th>Case</th><th>Execution</th><th>Kết luận</th><th>HTTP</th><th>Bằng chứng</th></tr></thead><tbody>{results.map((result) => <tr key={result.case_key}><td>{result.case_key}</td><td>{result.execution_status}</td><td>{result.authorization_conclusion}</td><td>{result.http_status ?? "—"}</td><td><Evidence result={result} /></td></tr>)}</tbody></table>}{findings.length > 0 && <section className="finding-groups" aria-labelledby="finding-groups-title"><h4 id="finding-groups-title">Nhóm phát hiện đã xác nhận</h4><p>Nhóm theo policy và mapping ổn định; không hiển thị danh tính, resource ID hoặc dữ liệu nhạy cảm.</p><ul>{findings.map((finding) => <li key={finding.id}><div><b>{finding.conclusion}</b><code>{finding.operation.method} {finding.operation.path}</code><span>Policy #{finding.policy.id} · phiên bản {finding.policy.version}</span></div><strong>{finding.reproduction_count} lần tái hiện</strong></li>)}</ul></section>}</div>;
++}
++
++function Evidence({ result }: { result: Result }) {
++  const evidence = result.response_metadata.evidence;
++  if (!evidence) return <span>UNAVAILABLE — chưa có evidence hợp lệ</span>;
++  return <details><summary>Run #{evidence.run_id} · {evidence.case_key}</summary><dl>
++    <dt>Owner control hợp lệ</dt><dd>{String(evidence.owner_control_valid)}</dd>
++    <dt>Owner response</dt><dd>{evidence.owner_execution_status} · HTTP {evidence.owner_http_status ?? "—"}</dd>
++    <dt>Policy</dt><dd>#{evidence.policy_id ?? "—"} v{evidence.policy_version ?? "—"} · {evidence.policy_decision ?? "—"} · {evidence.policy_resolution}</dd>
++    <dt>Actor đúng resource / restricted fields khớp owner</dt><dd>{String(evidence.actor_resource_matches)} / {String(evidence.restricted_fields_match_owner)}</dd>
++    <dt>Reason codes</dt><dd>{result.reason_codes.join(", ") || "—"}</dd>
++  </dl></details>;
+ }
+diff --git a/frontend/src/api.ts b/frontend/src/api.ts
+index ced8cc1..5977117 100644
+--- a/frontend/src/api.ts
++++ b/frontend/src/api.ts
+@@ -8,10 +8,11 @@ export type Policy = { id: number; version: number; operation_id: number; resour
+ export type OperationResourceMapping = { id: number; project_id: number; operation_id: number; resource_type_id: number; selected: boolean };
+ export type BatchPlanTarget = { operation_id: number; operation_path: string; resource_type_id: number; resource_type_name: string; resource_count: number; actor_case_count: number };
+ export type BatchMatrix = { identity_count: number; concrete_target_count: number; actor_case_count: number; identity_verifications: number; owner_baselines: number; planned_attempts: number; maximum_http_requests: number; request_limit: number; within_request_limit: boolean; targets: BatchPlanTarget[] };
+-export type MatrixCase = { case_key: string; control_type: string; actor_identity_id: number; resource_id: number; policy_status: string; warnings: string[] };
++export type MatrixCase = { case_key: string; control_type: string; actor_identity_id: number; resource_id: number; operation_id: number; owner_identity_id: number; resolved_decision: Policy["decision"] | null; policy_id: number | null; policy_version: number | null; policy_status: string; warnings: string[] };
+ export type ExecutionSummary = { planned_attempts: number; transport_attempts: number; completed_responses: number; scope_blocked: number; transport_errors: number; cancelled_cases: number };
+ export type Run = { id: number; project_id: number; status: string; snapshot: Record<string, unknown>; execution_summary: ExecutionSummary | null };
+-export type Result = { case_key: string; execution_status: string; authorization_conclusion: string; reason_codes: string[]; http_status: number | null; response_metadata: Record<string, unknown> };
++export type ResultEvidence = { schema_version: 1; run_id: number; case_key: string; owner_identity_id: number; actor_identity_id: number; owner_control_valid: boolean; owner_http_status: number | null; owner_execution_status: string; policy_id: number | null; policy_version: number | null; policy_decision: Policy["decision"] | null; policy_resolution: string; actor_resource_matches: boolean; restricted_fields_match_owner: boolean };
++export type Result = { case_key: string; execution_status: string; authorization_conclusion: string; reason_codes: string[]; http_status: number | null; response_metadata: { evidence?: ResultEvidence | null } };
+ export type Finding = { id: number; fingerprint: string; conclusion: string; operation: { method: string; path: string }; policy: { id: number; version: number }; reproduction_count: number };
+ export type ExternalLabJob = { public_id: string; project_id: number; job_kind: string; protocol_version: number; status: string; requested_at: string; dispatched_at: string | null; started_at: string | null; finished_at: string | null; cancel_requested_at: string | null; result_summary: Record<string, unknown>; artifact_manifest_sha256: string | null; failure_code: string | null };
+ 
+@@ -81,7 +82,7 @@ export const api = {
+   createBatchRun: (projectId: number, targetId: number) => request<Run>(`/api/projects/${projectId}/batch-runs`, { method: "POST", body: JSON.stringify({ target_id: targetId }) }),
+   runs: (projectId: number) => request<Run[]>(`/api/projects/${projectId}/runs`),
+   results: (runId: number) => request<Result[]>(`/api/runs/${runId}/results`),
+-  findings: (projectId: number) => request<Finding[]>(`/api/projects/${projectId}/findings`),
++  findings: (projectId: number, runId?: number) => request<Finding[]>(`/api/projects/${projectId}/findings${runId === undefined ? "" : `?run_id=${runId}`}`),
+   cancelRun: (runId: number) => request<void>(`/api/runs/${runId}/cancel`, { method: "POST" }),
+   externalLabJobs: (projectId: number) => request<ExternalLabJob[]>(`/api/projects/${projectId}/external-lab-jobs`),
+   createReadOnlyExternalLabJob: (projectId: number) => request<ExternalLabJob>(`/api/projects/${projectId}/external-lab-jobs/read-only-verification`, { method: "POST" }),

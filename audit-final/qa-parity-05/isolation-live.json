@@ -1,0 +1,9 @@
+{
+  "socket_guard_in_image": {
+    "connect": "DENIED",
+    "dns": "DENIED"
+  },
+  "route_table": "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT                                                       \neth0\t000013AC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0                                                                               \n",
+  "relay_listener": "State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess\nLISTEN 0      100        127.0.0.1:18080      0.0.0.0:*    users:((\"python3\",pid=27496,fd=6))\n",
+  "relay_active": "active"
+}

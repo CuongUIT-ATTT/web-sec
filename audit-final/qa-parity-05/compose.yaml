@@ -1,0 +1,20 @@
+name: t18-qa-parity-05
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: audit-final/qa-parity-05/Dockerfile
+    ports:
+      - "127.0.0.1:18080:8000"
+    environment:
+      QA_ADMIN_PASSWORD: ${QA_ADMIN_PASSWORD:?Set a dedicated QA password securely}
+    read_only: true
+    tmpfs:
+      - /qa-state:uid=65534,gid=65534,mode=0700
+      - /tmp:uid=65534,gid=65534,mode=0700
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [qa_only]
+networks:
+  qa_only:
+    internal: true

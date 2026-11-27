@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-11-15T23:59:19.091750+07:00",
+  "before": {
+    "timestamp": "2026-11-15T23:58:54.519639+07:00",
+    "sha256": {
+      "frontend/src/styles.css": "ceab372e36b742e54b00d59303e5f1bcb881ae0d4dc7a538cb2f514ae0383bed",
+      "frontend/src/main.tsx": "5f399294fe164659d4b1edd5a28be0af796a2d30231ea67f50f7852272514d93",
+      "frontend/src/App.test.tsx": "60527da7746bf28bc32a3058aa5ba678204f2303ced7fc378f6362335c8efb98",
+      "frontend/src/Analyze.test.tsx": "3934c8d31c76bdf7409bb5e9d5573ba96d64fa12dac00fd64c6470085ca0ef07",
+      "frontend/src/test-setup.ts": "9b328c4843431fa76d8de00008fc159e95f99a840211085ff3b8f25e53d14409",
+      "frontend/src/App.tsx": "5c06c308c0a7956986274cb8bcb6f583a5c4a1b0e06ebdc1496cb9b10c0177f5",
+      "frontend/src/api.ts": "9a10fcea01e77f38768b8cceae60e6e337e12d71b081221dc7242b0d99687c38",
+      "frontend/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "frontend/src/WebDemo.test.tsx": "3bae24b565f456dd197bfe1bb95ad60d3494d2800d79fe0020e5c93796eb01f8",
+      "frontend/src/Compare.test.tsx": "c24881564c0d377262eb6179efaa46af824cd20535339466c107be5e82719035",
+      "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f",
+      "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+      "tools/authorization-lab/src/authz_lab/fixtures/manual_sample_cases.json": "0ece045d34599487bfbac175e49efc3afce8f2beda4f34f67c41d39817af6eca",
+      "tools/authorization-lab/src/authz_lab/fixtures/zap/imported-context-attestation.example.json": "7654ef2fe45b931c0f8ccf5181594dfc8363cb2e40caa8c14f564068ac23eddd",
+      "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v2.json": "6d175ba50ed4f8d80f9cc3ee0ebb06e15d432c75e567671ab49b25b830a9a33a",
+      "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v1.json": "a73143f1532569bf767d7f851ea18cc343b34ff0e87d0a5c5dc31f993684176f",
+      "frontend/package-lock.json": "b575f479bbc8beab9b1d9223e49647ac1993da47d117e7be2fd0f2d3884a2d64",
+      "deploy/labs/vampi-bfla-disposable.compose.yaml": "4436663ddd9327dd65bf3b57250bcb0790869c4822d2fec6eb6361ff37f17372"
+    }
+  },
+  "after": {
+    "frontend/src/styles.css": "ceab372e36b742e54b00d59303e5f1bcb881ae0d4dc7a538cb2f514ae0383bed",
+    "frontend/src/main.tsx": "5f399294fe164659d4b1edd5a28be0af796a2d30231ea67f50f7852272514d93",
+    "frontend/src/App.test.tsx": "60527da7746bf28bc32a3058aa5ba678204f2303ced7fc378f6362335c8efb98",
+    "frontend/src/Analyze.test.tsx": "3934c8d31c76bdf7409bb5e9d5573ba96d64fa12dac00fd64c6470085ca0ef07",
+    "frontend/src/test-setup.ts": "9b328c4843431fa76d8de00008fc159e95f99a840211085ff3b8f25e53d14409",
+    "frontend/src/App.tsx": "5c06c308c0a7956986274cb8bcb6f583a5c4a1b0e06ebdc1496cb9b10c0177f5",
+    "frontend/src/api.ts": "9a10fcea01e77f38768b8cceae60e6e337e12d71b081221dc7242b0d99687c38",
+    "frontend/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "frontend/src/WebDemo.test.tsx": "3bae24b565f456dd197bfe1bb95ad60d3494d2800d79fe0020e5c93796eb01f8",
+    "frontend/src/Compare.test.tsx": "c24881564c0d377262eb6179efaa46af824cd20535339466c107be5e82719035",
+    "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f",
+    "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+    "tools/authorization-lab/src/authz_lab/fixtures/manual_sample_cases.json": "0ece045d34599487bfbac175e49efc3afce8f2beda4f34f67c41d39817af6eca",
+    "tools/authorization-lab/src/authz_lab/fixtures/zap/imported-context-attestation.example.json": "7654ef2fe45b931c0f8ccf5181594dfc8363cb2e40caa8c14f564068ac23eddd",
+    "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v2.json": "6d175ba50ed4f8d80f9cc3ee0ebb06e15d432c75e567671ab49b25b830a9a33a",
+    "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v1.json": "a73143f1532569bf767d7f851ea18cc343b34ff0e87d0a5c5dc31f993684176f",
+    "frontend/package-lock.json": "b575f479bbc8beab9b1d9223e49647ac1993da47d117e7be2fd0f2d3884a2d64",
+    "deploy/labs/vampi-bfla-disposable.compose.yaml": "4436663ddd9327dd65bf3b57250bcb0790869c4822d2fec6eb6361ff37f17372"
+  },
+  "stable": true,
+  "commands": [
+    {
+      "command": "npm --prefix frontend test -- --reporter=verbose",
+      "exit": 0,
+      "log": "cmp06-pagination-tests.log",
+      "tests_passed": 49
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exit": 0,
+      "log": "cmp06-pagination-lint.log"
+    }
+  ]
+}

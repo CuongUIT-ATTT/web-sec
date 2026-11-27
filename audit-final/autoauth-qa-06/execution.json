@@ -1,0 +1,33 @@
+[
+  {
+    "command": ".venv/bin/python -m pytest backend/tests -q",
+    "exit": 0,
+    "log": "check-0.log"
+  },
+  {
+    "command": "npm --prefix frontend test",
+    "exit": 0,
+    "log": "check-1.log"
+  },
+  {
+    "command": "npm --prefix frontend run lint",
+    "exit": 0,
+    "log": "check-2.log"
+  },
+  {
+    "command": "npm --prefix frontend run build",
+    "exit": 0,
+    "log": "check-3.log"
+  },
+  {
+    "command": "git diff --check",
+    "exit": 0,
+    "log": "check-4.log"
+  },
+  {
+    "command": ".venv/bin/python -m pytest backend/tests/test_authorization_execution.py backend/tests/test_run_limit.py backend/tests/test_batch_runner_regressions.py backend/tests/test_evaluator.py -q",
+    "exit": 0,
+    "passed": 66,
+    "log": "focused.log"
+  }
+]

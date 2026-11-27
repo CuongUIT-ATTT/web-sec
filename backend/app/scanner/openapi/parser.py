@@ -22,7 +22,7 @@ class OpenApiError(ValueError):
     """Raised when the submitted OpenAPI JSON document is outside the MVP subset."""
 
 
-def parse_openapi_json(spec: Any) -> list[OperationInventory]:
+def parse_openapi_json(spec: Any, *, include_non_get: bool = False) -> list[OperationInventory]:
     if not isinstance(spec, dict) or not isinstance(spec.get("openapi"), str) or not isinstance(spec.get("paths"), dict):
         raise OpenApiError("Cần OpenAPI JSON có trường openapi và paths.")
     global_security = spec.get("security")
@@ -33,7 +33,7 @@ def parse_openapi_json(spec: Any) -> list[OperationInventory]:
         shared_parameters = path_item.get("parameters", [])
         shared_parameters = shared_parameters if isinstance(shared_parameters, list) else []
         for method, operation in path_item.items():
-            if method.lower() not in SUPPORTED_METHODS or not isinstance(operation, dict):
+            if method.lower() not in ({"get", "post", "put", "patch", "delete", "head", "options"} if include_non_get else SUPPORTED_METHODS) or not isinstance(operation, dict):
                 continue
             parameters = [*shared_parameters, *(operation.get("parameters", []) if isinstance(operation.get("parameters", []), list) else [])]
             names = tuple(
@@ -49,8 +49,8 @@ def parse_openapi_json(spec: Any) -> list[OperationInventory]:
             if "requestBody" in operation:
                 diagnostics.append("Request body không được thực thi trong MVP GET-only.")
             inventory.append(OperationInventory(
-                operation_id=str(operation.get("operationId") or f"GET:{path}"),
-                method="GET",
+                operation_id=str(operation.get("operationId") or f"{method.upper()}:{path}"),
+                method=method.upper(),
                 path=path,
                 path_parameters=names,
                 security_mode=security_mode,

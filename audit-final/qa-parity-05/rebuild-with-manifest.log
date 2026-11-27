@@ -1,0 +1,62 @@
+time="2026-11-15T22:10:08+07:00" level=warning msg="buildx Docker CLI plugin not found: falling back to the classic builder. BuildKit-only build features (multi-arch, secrets, ssh, additional contexts, ...) will not be available"
+ Image t18-qa-parity-05-web Building 
+ Image t18-qa-parity-05-web Building 
+Sending build context to Docker daemon  547.8kBSending build context to Docker daemon   2.13MBSending build context to Docker daemon  3.199MBSending build context to Docker daemon  4.248MBSending build context to Docker daemon  5.297MBSending build context to Docker daemon  5.821MBSending build context to Docker daemon   6.87MBSending build context to Docker daemon  7.919MBSending build context to Docker daemon  8.968MBSending build context to Docker daemon  10.02MBSending build context to Docker daemon  10.54MBSending build context to Docker daemon  11.07MBSending build context to Docker daemon  11.59MBSending build context to Docker daemon  12.64MBSending build context to Docker daemon  13.16MBSending build context to Docker daemon  13.69MBSending build context to Docker daemon  14.21MBSending build context to Docker daemon  14.74MBSending build context to Docker daemon  15.26MBSending build context to Docker daemon  15.79MBSending build context to Docker daemon  16.83MBSending build context to Docker daemon  17.36MBSending build context to Docker daemon  17.88MBSending build context to Docker daemon  18.41MBSending build context to Docker daemon  18.93MBSending build context to Docker daemon  19.98MBSending build context to Docker daemon  21.03MBSending build context to Docker daemon  22.08MBSending build context to Docker daemon  23.13MBSending build context to Docker daemon  23.65MBSending build context to Docker daemon  24.18MBSending build context to Docker daemon  25.23MBSending build context to Docker daemon  25.75MBSending build context to Docker daemon   26.8MBSending build context to Docker daemon  27.32MBSending build context to Docker daemon  27.85MBSending build context to Docker daemon   28.9MBSending build context to Docker daemon  29.95MBSending build context to Docker daemon  30.47MBSending build context to Docker daemon     31MBSending build context to Docker daemon  31.52MBSending build context to Docker daemon  32.04MBSending build context to Docker daemon  32.57MBSending build context to Docker daemon  33.09MBSending build context to Docker daemon  33.62MBSending build context to Docker daemon  34.14MBSending build context to Docker daemon  35.19MBSending build context to Docker daemon  36.24MBSending build context to Docker daemon  37.29MBSending build context to Docker daemon  38.34MBSending build context to Docker daemon  39.39MBSending build context to Docker daemon  40.44MBSending build context to Docker daemon  40.96MBSending build context to Docker daemon  42.01MBSending build context to Docker daemon  43.06MBSending build context to Docker daemon  44.11MBSending build context to Docker daemon  44.63MBSending build context to Docker daemon  45.16MBSending build context to Docker daemon  46.21MBSending build context to Docker daemon  47.25MBSending build context to Docker daemon   48.3MBSending build context to Docker daemon  49.35MBSending build context to Docker daemon   50.4MBSending build context to Docker daemon  51.45MBSending build context to Docker daemon   52.5MBSending build context to Docker daemon  53.55MBSending build context to Docker daemon   54.6MBSending build context to Docker daemon  55.12MBSending build context to Docker daemon  55.65MBSending build context to Docker daemon  56.69MBSending build context to Docker daemon  57.74MBSending build context to Docker daemon  58.79MBSending build context to Docker daemon  59.84MBSending build context to Docker daemon  61.94MBSending build context to Docker daemon  62.99MBSending build context to Docker daemon  64.04MBSending build context to Docker daemon  64.56MBSending build context to Docker daemon  65.09MBSending build context to Docker daemon  65.61MBSending build context to Docker daemon  66.14MBSending build context to Docker daemon  66.66MBSending build context to Docker daemon  67.19MBSending build context to Docker daemon  67.71MBSending build context to Docker daemon  68.76MBSending build context to Docker daemon  69.28MBSending build context to Docker daemon  70.33MBSending build context to Docker daemon  70.86MBSending build context to Docker daemon  71.38MBSending build context to Docker daemon  71.91MBSending build context to Docker daemon  72.43MBSending build context to Docker daemon  72.95MBSending build context to Docker daemon  73.48MBSending build context to Docker daemon     74MBSending build context to Docker daemon  74.53MBSending build context to Docker daemon  75.05MBSending build context to Docker daemon  75.58MBSending build context to Docker daemon   76.1MBSending build context to Docker daemon  76.63MBSending build context to Docker daemon  77.15MBSending build context to Docker daemon  77.34MB
+Step 1/18 : FROM node:22-alpine AS frontend
+ ---> 0e1754758c2d
+Step 2/18 : WORKDIR /app/frontend
+ ---> Using cache
+ ---> d79e62657695
+Step 3/18 : COPY frontend/package*.json ./
+ ---> Using cache
+ ---> cfa3110927f2
+Step 4/18 : RUN npm ci
+ ---> Using cache
+ ---> f39b6c428273
+Step 5/18 : COPY frontend/ ./
+ ---> Using cache
+ ---> 5715f67822be
+Step 6/18 : RUN npm run build
+ ---> Using cache
+ ---> d5b2fdfa51a9
+Step 7/18 : RUN find src -type f -exec sha256sum {} + > /app/frontend-source.sha256
+ ---> Running in 3086f70a0f8b
+ ---> Removed intermediate container 3086f70a0f8b
+ ---> f725af60dfee
+Step 8/18 : FROM python:3.11-slim
+ ---> 65bd3d9f1d7f
+Step 9/18 : WORKDIR /app
+ ---> Using cache
+ ---> 2ea351e2b601
+Step 10/18 : COPY pyproject.toml README.md ./
+ ---> Using cache
+ ---> e51ee3340a98
+Step 11/18 : COPY backend/ ./backend/
+ ---> Using cache
+ ---> ab56eb8cb959
+Step 12/18 : RUN pip install --no-cache-dir .
+ ---> Using cache
+ ---> 17c52131c8e2
+Step 13/18 : COPY --from=frontend /app/frontend/dist ./frontend_dist
+ ---> Using cache
+ ---> 47dfae539d40
+Step 14/18 : COPY --from=frontend /app/frontend-source.sha256 ./frontend-source.sha256
+ ---> 99e4fdead46e
+Step 15/18 : COPY audit-final/qa-parity-05/qa_app.py ./qa_app.py
+ ---> c47a256428a6
+Step 16/18 : USER 65534:65534
+ ---> Running in de139b0fba24
+ ---> Removed intermediate container de139b0fba24
+ ---> e62cf191e23e
+Step 17/18 : CMD ["uvicorn", "qa_app:application", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+ ---> Running in 35828afb4d92
+ ---> Removed intermediate container 35828afb4d92
+ ---> 8248154c2fe0
+Step 18/18 : LABEL com.docker.compose.image.builder=classic
+ ---> Running in f854f49fc638
+ ---> Removed intermediate container f854f49fc638
+ ---> ec57dc2d6b0b
+Successfully built ec57dc2d6b0b
+Successfully tagged t18-qa-parity-05-web:latest
+ Image t18-qa-parity-05-web Built 
+ Image t18-qa-parity-05-web Built 

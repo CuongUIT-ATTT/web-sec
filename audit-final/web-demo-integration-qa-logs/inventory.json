@@ -1,0 +1,44 @@
+{
+  "timezone": "Asia/Ho_Chi_Minh (UTC+07:00)",
+  "fixtures": [
+    {
+      "path": "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv",
+      "sha256": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f",
+      "mtime_utc": "2026-11-13T08:27:49.458315+00:00"
+    },
+    {
+      "path": "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json",
+      "sha256": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+      "mtime_utc": "2026-10-23T19:17:08.123740+00:00"
+    },
+    {
+      "path": "tools/authorization-lab/src/authz_lab/fixtures/manual_sample_cases.json",
+      "sha256": "0ece045d34599487bfbac175e49efc3afce8f2beda4f34f67c41d39817af6eca",
+      "mtime_utc": "2026-10-20T04:31:22.961814+00:00"
+    },
+    {
+      "path": "tools/authorization-lab/src/authz_lab/fixtures/zap/imported-context-attestation.example.json",
+      "sha256": "7654ef2fe45b931c0f8ccf5181594dfc8363cb2e40caa8c14f564068ac23eddd",
+      "mtime_utc": "2026-10-23T10:24:30.337967+00:00"
+    },
+    {
+      "path": "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v2.json",
+      "sha256": "6d175ba50ed4f8d80f9cc3ee0ebb06e15d432c75e567671ab49b25b830a9a33a",
+      "mtime_utc": "2026-10-25T16:37:08.354317+00:00"
+    },
+    {
+      "path": "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v1.json",
+      "sha256": "a73143f1532569bf767d7f851ea18cc343b34ff0e87d0a5c5dc31f993684176f",
+      "mtime_utc": "2026-10-21T02:14:14.727714+00:00"
+    }
+  ],
+  "lab_digest": "NOT_VERIFIED: runtime inspection/start prohibited",
+  "secret_values": "NOT_READ",
+  "environment_presence": {
+    "AUTHZ_ADMIN_PASSWORD": false,
+    "AUTHZ_SESSION_SECRET": false,
+    "AUTHZ_SECRET_ENCRYPTION_KEY": false,
+    "AUTHZ_ALLOWED_TARGET_NETWORKS": false,
+    "AUTHZ_ALLOWED_TARGET_PORTS": false
+  }
+}

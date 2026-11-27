@@ -24,6 +24,19 @@ class HttpObservation:
     reason_codes: tuple[str, ...]
 
 
+def _unambiguous_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Ambiguous JSON object")
+        result[key] = value
+    return result
+
+
+def _reject_constant(value):
+    raise ValueError("Non-finite JSON constant")
+
+
 async def get_json(
     *,
     base_url: str,
@@ -42,7 +55,7 @@ async def get_json(
         headers["Authorization"] = f"Bearer {bearer_token}"
     timeout = timeout_seconds if timeout_seconds is not None else settings.default_timeout_seconds
     try:
-        async with httpx.AsyncClient(follow_redirects=False, timeout=timeout, cookies=None) as client:
+        async with httpx.AsyncClient(follow_redirects=False, timeout=timeout, cookies=None, trust_env=False) as client:
             async with client.stream("GET", url, headers=headers) as response:
                 chunks: list[bytes] = []
                 body_length = 0
@@ -61,8 +74,8 @@ async def get_json(
                     return HttpObservation(ExecutionStatus.BODY_TRUNCATED, response.status_code, None, body_length, True, False, ("evidence.body_truncated",))
                 raw_body = b"".join(chunks)
                 try:
-                    json_body = json.loads(raw_body) if raw_body else None
-                except json.JSONDecodeError:
+                    json_body = json.loads(raw_body, object_pairs_hook=_unambiguous_object, parse_constant=_reject_constant) if raw_body else None
+                except (ValueError, UnicodeDecodeError):
                     return HttpObservation(ExecutionStatus.JSON_PARSE_ERROR, response.status_code, None, body_length, False, True, ("evidence.json_parse_error",))
                 return HttpObservation(ExecutionStatus.COMPLETED_RESPONSE, response.status_code, json_body, body_length, False, False, ("execution.http_response",))
     except httpx.TimeoutException:

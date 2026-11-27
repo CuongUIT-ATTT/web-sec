@@ -1,0 +1,1 @@
+FAIL: cross-project stale response. NOT_RUN: browser E2E, runtime owner PASS + BOLA, 3/5 roles, R5. NOT_VERIFIED: lab digest, runtime fixtures/config, valid evidence rendering, stale matrix, polling exhaustion.

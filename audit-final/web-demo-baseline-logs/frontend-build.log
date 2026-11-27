@@ -1,0 +1,14 @@
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 17 modules transformed.
+rendering chunks...
+computing gzip size...
+../audit-final/web-demo-baseline-logs/frontend-dist/index.html                   0.52 kB │ gzip:  0.33 kB
+../audit-final/web-demo-baseline-logs/frontend-dist/assets/index-BL7a4s1h.css    6.68 kB │ gzip:  2.19 kB
+../audit-final/web-demo-baseline-logs/frontend-dist/assets/index-BkJF-dvg.js   252.80 kB │ gzip: 77.07 kB
+
+✓ built in 367ms
+
+(!) outDir /home/cuong/Dự án/Bảo mật web/Project/audit-final/web-demo-baseline-logs/frontend-dist is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+

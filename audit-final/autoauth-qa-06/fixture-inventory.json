@@ -1,0 +1,7 @@
+{
+  "utc": "2026-11-16T09:38:35.483855+00:00",
+  "fixture_source": "backend/tests/test_authorization_model.py",
+  "fixture_sha256": "a65f43dd947500483d393e8237e6aeef5c1fa528928847281ba36d9b4c696fd3",
+  "openapi": "synthetic fixture operations; no external OpenAPI loaded",
+  "lab_digest": "NOT_RUN"
+}

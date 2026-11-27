@@ -1,0 +1,9 @@
+{
+  "frontend/src/App.tsx": "cfc662f31138e5e1c101687650b48427f9740a1b24291ab0969c409a91ce83a0",
+  "frontend/src/api.ts": "281c55482c987353fd1cad84c8508378098cfa49a82573a933fb3212c1bbf40d",
+  "frontend/src/styles.css": "ace4262c47c7b2bc62e1d357028d5b49d679dcb3361569c88b78fe04080ceb16",
+  "frontend/src/App.test.tsx": "60527da7746bf28bc32a3058aa5ba678204f2303ced7fc378f6362335c8efb98",
+  "frontend/src/WebDemo.test.tsx": "9659a9a61b9134935430edae08aabee384571c8efd56ff5a95e4c3ec90365886",
+  "frontend/package-lock.json": "b575f479bbc8beab9b1d9223e49647ac1993da47d117e7be2fd0f2d3884a2d64",
+  "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b"
+}

@@ -1,0 +1,12 @@
+{
+  "command": [
+    "npm",
+    "--prefix",
+    "frontend",
+    "test"
+  ],
+  "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+  "start": "2026-11-13T13:51:11.389399+00:00",
+  "end": "2026-11-13T13:51:16.736145+00:00",
+  "exit": 1
+}

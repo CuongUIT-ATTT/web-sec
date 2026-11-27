@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.api.routes import get_session
 from backend.app.api.workflow_schemas import (
+    ComparisonView,
     BatchMatrixView,
     BatchRunCreate,
     MatrixCaseView,
@@ -27,6 +29,11 @@ from backend.app.api.workflow_schemas import (
     ResourceTypeView,
     ResourceUpdate,
     ResourceView,
+    ResourceInspection,
+    ResultEvidenceView,
+    ResultEvidenceV2View,
+    ResultMetadataView,
+    RunResultView,
     RunCreate,
     RunView,
 )
@@ -39,6 +46,7 @@ from backend.app.scanner.classification.policy import PolicyRule, resolve_policy
 from backend.app.scanner.matrix.generator import generate_cases
 from backend.app.scanner.openapi.parser import OpenApiError, parse_openapi_json
 from backend.app.services.batch_plan import BatchPlan, BatchPlanError, build_batch_plan
+from backend.app.services.demo_presentation import matrix_rows, public_snapshot
 from backend.app.services.run_snapshot import snapshot_batch_run, snapshot_run
 
 router = APIRouter(prefix="/api", tags=["workflow"])
@@ -145,12 +153,40 @@ def update_resource_type(resource_type_id: int, payload: ResourceTypeUpdate, _: 
     return resource_type
 
 
+def _resource_view(resource):
+    return {"id": resource.id, "resource_type_id": resource.resource_type_id,
+            "owner_identity_id": resource.owner_identity_id, "path_parameter": resource.path_parameter,
+            "external_id": "[REDACTED]", "resource_alias": f"resource-{resource.id}"}
+
+
+@router.post("/projects/{project_id}/resources/{resource_id}/inspect", response_model=ResourceInspection)
+def inspect_resource(project_id: int, resource_id: int, response: Response,
+                     _: None = Depends(require_csrf), session: Session = Depends(get_session)):
+    """Explicit admin reveal, never a list/export DTO or an outbound request."""
+    import re
+    from backend.app.workers.runner import _concrete_path
+    resource = session.scalar(select(Resource).join(ResourceType).where(
+        Resource.id == resource_id, ResourceType.project_id == project_id))
+    if resource is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy resource trong dự án.")
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    previews = []
+    for operation in session.scalars(select(OpenApiOperation).where(
+        OpenApiOperation.project_id == project_id, OpenApiOperation.selected.is_(True),
+        OpenApiOperation.method == "GET").order_by(OpenApiOperation.id)):
+        if set(re.findall(r"\{([^{}]+)\}", operation.path)) == {resource.path_parameter}:
+            previews.append(dict(operation_id=operation.id, method="GET",
+                path=_concrete_path(operation.path, resource.path_parameter, resource.external_id)))
+    return {**_resource_view(resource), "external_id": resource.external_id, "request_previews": previews}
+
+
 @router.get("/projects/{project_id}/resources", response_model=list[ResourceView])
 def list_resources(project_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[Resource]:
     require_project(session, project_id)
-    return list(session.scalars(
+    return [_resource_view(resource) for resource in session.scalars(
         select(Resource).join(ResourceType).where(ResourceType.project_id == project_id).order_by(Resource.id)
-    ))
+    )]
 
 
 @router.post("/resource-types/{resource_type_id}/resources", response_model=ResourceView, status_code=status.HTTP_201_CREATED)
@@ -169,7 +205,7 @@ def create_resource(resource_type_id: int, payload: ResourceCreate, _: None = De
         session.rollback()
         raise HTTPException(status_code=409, detail="Resource ID đã tồn tại trong loại tài nguyên.") from error
     session.refresh(resource)
-    return resource
+    return _resource_view(resource)
 
 
 @router.patch("/resources/{resource_id}", response_model=ResourceView)
@@ -181,7 +217,10 @@ def update_resource(resource_id: int, payload: ResourceUpdate, _: None = Depends
     owner = session.get(Identity, payload.owner_identity_id)
     if resource_type is None or owner is None or owner.project_id != resource_type.project_id:
         raise HTTPException(status_code=422, detail="Owner phải là danh tính của cùng dự án.")
-    resource.external_id = payload.external_id
+    if payload.external_id == "[REDACTED]":
+        raise HTTPException(status_code=422, detail="Bỏ external_id để giữ định danh hiện tại; nhập giá trị mới để thay thế.")
+    if payload.external_id is not None:
+        resource.external_id = payload.external_id
     resource.owner_identity_id = payload.owner_identity_id
     resource.path_parameter = payload.path_parameter
     try:
@@ -190,7 +229,7 @@ def update_resource(resource_id: int, payload: ResourceUpdate, _: None = Depends
         session.rollback()
         raise HTTPException(status_code=409, detail="Resource ID đã tồn tại trong loại tài nguyên.") from error
     session.refresh(resource)
-    return resource
+    return _resource_view(resource)
 
 
 def mapping_view(mapping: OperationResourceMapping) -> dict[str, object]:
@@ -310,6 +349,7 @@ def get_batch_matrix(project_id: int, target_id: int, _: None = Depends(require_
         "request_limit": plan.target.request_limit,
         "within_request_limit": plan.within_request_limit,
         "targets": list(grouped.values()),
+        "cases": [row for item in plan.targets for row in matrix_rows(item.operation, item.resource, plan.identities, item.policies)],
     }
 
 
@@ -404,35 +444,16 @@ def get_matrix(project_id: int, operation_id: int, resource_id: int, _: None = D
         raise HTTPException(status_code=422, detail="Resource phải thuộc dự án.")
     identities = list(session.scalars(select(Identity).where(Identity.project_id == project_id)))
     policies = list(session.scalars(select(Policy).where(Policy.operation_id == operation_id, Policy.resource_type_id == resource.resource_type_id)))
-    resolutions = {
-        identity.id: resolve_policy(
-            [PolicyRule(policy.id, policy.version, policy.operation_id, policy.resource_type_id, policy.identity_id, policy.role, policy.resource_id, PolicyDecision(policy.decision)) for policy in policies],
-            operation_id=operation_id,
-            resource_type_id=resource.resource_type_id,
-            identity_id=identity.id,
-            role=identity.role,
-            resource_id=resource.id,
-        )
-        for identity in identities
-    }
-    cases = generate_cases(
-        resource_id=resource.id,
-        owner_identity_id=resource.owner_identity_id,
-        actor_identity_ids=[identity.id for identity in identities],
-        resolutions=resolutions,
-        verified_identity_ids=set(),
-    )
-    return [
-        {
-            "case_key": case.case_key,
-            "control_type": case.control_type,
-            "actor_identity_id": case.actor_identity_id,
-            "resource_id": case.resource_id,
-            "policy_status": case.policy_status,
-            "warnings": list(case.warnings),
-        }
-        for case in cases
-    ]
+    if not operation.selected or operation.method != "GET":
+        raise HTTPException(status_code=422, detail="Matrix chỉ cho phép GET đã chọn.")
+    mapping = session.scalar(select(OperationResourceMapping).where(
+        OperationResourceMapping.project_id == project_id,
+        OperationResourceMapping.operation_id == operation.id,
+        OperationResourceMapping.resource_type_id == resource.resource_type_id,
+        OperationResourceMapping.selected.is_(True)))
+    if mapping is None or "{" + resource.path_parameter + "}" not in operation.path or resource.owner_identity_id not in {i.id for i in identities}:
+        raise HTTPException(status_code=422, detail="Resource cần mapping GET đã chọn và owner trong dự án.")
+    return matrix_rows(operation, resource, identities, policies)
 
 
 @router.post("/projects/{project_id}/runs", response_model=RunView, status_code=status.HTTP_201_CREATED)
@@ -473,7 +494,7 @@ def create_run(project_id: int, payload: RunCreate, _: None = Depends(require_cs
         session.add(RunIdentitySecret(run_id=run.id, identity_id=identity.id, ciphertext=secret.ciphertext, key_version=secret.key_version))
     session.commit()
     session.refresh(run)
-    return run
+    return _run_view(session, run)
 
 
 def _run_view(session: Session, run: Run) -> dict[str, object]:
@@ -482,7 +503,7 @@ def _run_view(session: Session, run: Run) -> dict[str, object]:
         "id": run.id,
         "project_id": run.project_id,
         "status": run.status,
-        "snapshot": run.snapshot,
+        "snapshot": public_snapshot(run.snapshot),
         "execution_summary": None if stats is None else {
             "planned_attempts": stats.planned_attempts,
             "transport_attempts": stats.transport_attempts,
@@ -500,7 +521,31 @@ def list_runs(project_id: int, _: None = Depends(require_admin), session: Sessio
     return [_run_view(session, run) for run in session.scalars(select(Run).where(Run.project_id == project_id).order_by(Run.id.desc()))]
 
 
-@router.get("/runs/{run_id}/results")
+def _result_metadata(result: RunResult) -> ResultMetadataView:
+    raw = result.response_metadata
+    if not isinstance(raw, dict):
+        return ResultMetadataView()
+    safe = {}
+    # Validate each observation separately; malformed historical fields are unavailable.
+    for key in ("body_length", "body_truncated", "json_parse_error"):
+        if key in raw:
+            try:
+                safe[key] = getattr(ResultMetadataView.model_validate({key: raw[key]}), key)
+            except ValidationError:
+                pass
+    try:
+        candidate = raw.get("evidence")
+        if not isinstance(candidate, dict) or type(candidate.get("schema_version")) is not int:
+            return ResultMetadataView(**safe)
+        evidence = (ResultEvidenceV2View if candidate["schema_version"] == 2 else ResultEvidenceView).model_validate(candidate)
+        if evidence.run_id == result.run_id and evidence.case_key == result.case_key:
+            safe["evidence"] = evidence
+    except ValidationError:
+        pass
+    return ResultMetadataView(**safe)
+
+
+@router.get("/runs/{run_id}/results", response_model=list[RunResultView])
 def list_results(run_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
     if session.get(Run, run_id) is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy.")
@@ -511,16 +556,40 @@ def list_results(run_id: int, _: None = Depends(require_admin), session: Session
             "authorization_conclusion": result.authorization_conclusion,
             "reason_codes": result.reason_codes,
             "http_status": result.http_status,
-            "response_metadata": result.response_metadata,
+            "response_metadata": _result_metadata(result),
         }
         for result in session.scalars(select(RunResult).where(RunResult.run_id == run_id).order_by(RunResult.id))
     ]
 
 
 @router.get("/projects/{project_id}/findings")
-def list_findings(project_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
+def list_findings(project_id: int, run_id: int | None = None, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> list[dict[str, object]]:
     require_project(session, project_id)
-    findings = list(session.scalars(select(Finding).where(Finding.project_id == project_id).order_by(Finding.id.desc())))
+    if run_id is not None:
+        run = session.get(Run, run_id)
+        if run is None or run.project_id != project_id:
+            raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy trong dự án.")
+    # Link only persisted reproductions; never reconstruct case provenance from fingerprints.
+    links_query = (
+        select(FindingReproduction, RunResult)
+        .join(RunResult, FindingReproduction.run_result_id == RunResult.id)
+        .join(Run, RunResult.run_id == Run.id)
+        .join(Finding, FindingReproduction.finding_id == Finding.id)
+        .where(Finding.project_id == project_id, Run.project_id == project_id)
+        .order_by(FindingReproduction.id)
+    )
+    if run_id is not None:
+        links_query = links_query.where(RunResult.run_id == run_id)
+    links: dict[int, list[dict[str, object]]] = {}
+    for reproduction, result in session.execute(links_query):
+        links.setdefault(reproduction.finding_id, []).append({
+            "run_id": result.run_id,
+            "run_result_id": result.id,
+            "case_key": result.case_key,
+            "actor_identity_id": reproduction.actor_identity_id,
+            "resource_id": reproduction.resource_id,
+        })
+    findings = session.scalars(select(Finding).where(Finding.project_id == project_id).order_by(Finding.id.desc()))
     return [
         {
             "id": finding.id,
@@ -528,9 +597,11 @@ def list_findings(project_id: int, _: None = Depends(require_admin), session: Se
             "conclusion": finding.conclusion,
             "operation": {"method": finding.operation_method, "path": finding.operation_path},
             "policy": {"id": finding.policy_id, "version": finding.policy_version},
-            "reproduction_count": session.scalar(select(func.count(FindingReproduction.id)).where(FindingReproduction.finding_id == finding.id)) or 0,
+            "reproduction_count": len(links.get(finding.id, [])),
+            "reproductions": links.get(finding.id, []),
         }
         for finding in findings
+        if run_id is None or finding.id in links
     ]
 
 
@@ -541,3 +612,31 @@ def cancel_run(run_id: int, _: None = Depends(require_csrf), session: Session = 
         raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy.")
     request_cancellation(session, run_id)
     session.commit()
+
+
+@router.get("/projects/{project_id}/runs/{run_id}/comparison", response_model=ComparisonView)
+def get_comparison(project_id: int, run_id: int, _: None = Depends(require_admin), session: Session = Depends(get_session)) -> dict:
+    """Read persisted observations only. External methods have no verified importer.
+
+    Never join preview/current configuration, CLI files, or legacy keys by similarity.
+    A row without a case key remains visible but cannot be matched to another method.
+    """
+    require_project(session, project_id)
+    run = session.get(Run, run_id)
+    if run is None or run.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lượt chạy trong dự án.")
+    cases = []
+    for result in session.scalars(select(RunResult).where(RunResult.run_id == run_id).order_by(RunResult.id)):
+        observation = RunResultView(
+            case_key=result.case_key, execution_status=result.execution_status,
+            authorization_conclusion=result.authorization_conclusion,
+            reason_codes=result.reason_codes, http_status=result.http_status,
+            response_metadata=_result_metadata(result),
+        )
+        cases.append(dict(run_id=run_id, case_key=result.case_key, methods=[
+            dict(method="MANUAL", execution_status="NOT_RUN"),
+            dict(method="T18", execution_status=result.execution_status,
+                 observation=observation, provenance=f"run:{run_id}:result:{result.id}"),
+            dict(method="ZAP", execution_status="NOT_RUN"),
+        ]))
+    return dict(run_id=run_id, cases=cases)

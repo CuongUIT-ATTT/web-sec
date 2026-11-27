@@ -1,0 +1,80 @@
+{
+  "timestamp": "2026-11-15T23:41:32.313491+07:00",
+  "head": "bdbba9933ca057cb2247c3a1de9b3ee239c452bd",
+  "before": {
+    "frontend/src/styles.css": "ceab372e36b742e54b00d59303e5f1bcb881ae0d4dc7a538cb2f514ae0383bed",
+    "frontend/src/main.tsx": "5f399294fe164659d4b1edd5a28be0af796a2d30231ea67f50f7852272514d93",
+    "frontend/src/App.test.tsx": "60527da7746bf28bc32a3058aa5ba678204f2303ced7fc378f6362335c8efb98",
+    "frontend/src/Analyze.test.tsx": "3934c8d31c76bdf7409bb5e9d5573ba96d64fa12dac00fd64c6470085ca0ef07",
+    "frontend/src/test-setup.ts": "9b328c4843431fa76d8de00008fc159e95f99a840211085ff3b8f25e53d14409",
+    "frontend/src/App.tsx": "5c06c308c0a7956986274cb8bcb6f583a5c4a1b0e06ebdc1496cb9b10c0177f5",
+    "frontend/src/api.ts": "9a10fcea01e77f38768b8cceae60e6e337e12d71b081221dc7242b0d99687c38",
+    "frontend/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "frontend/src/WebDemo.test.tsx": "3bae24b565f456dd197bfe1bb95ad60d3494d2800d79fe0020e5c93796eb01f8",
+    "frontend/src/Compare.test.tsx": "7e1bd6021a0e1e2759ea63951cc98320f4c08d40e22df4cd9c80407c231b4eb2",
+    "frontend/package.json": "e3cc9ced40c32c2bc99f469b6abc05bd91fb42591525951b8592c1a391364f40",
+    "frontend/package-lock.json": "b575f479bbc8beab9b1d9223e49647ac1993da47d117e7be2fd0f2d3884a2d64",
+    "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+    "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f"
+  },
+  "runs": [
+    {
+      "argv": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "test"
+      ],
+      "exit": 0,
+      "output": "\n RUN  v5.0.5 /home/cuong/Dự án/Bảo mật web/Project/frontend\n\n\n Test Files  4 passed (4)\n      Tests  44 passed (44)\n   Start at  23:41:33\n   Duration  5.97s (tests 49%, environment 43%, setup 4%, import 3%, transform 1%)\n\n"
+    },
+    {
+      "argv": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "run",
+        "build"
+      ],
+      "exit": 0,
+      "output": "vite v8.3.5 building client environment for production...\ntransforming...\n✓ 17 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                   0.52 kB │ gzip:  0.33 kB\ndist/assets/index-DpHb621v.css    7.77 kB │ gzip:  2.48 kB\ndist/assets/index-e4GGCM8H.js   272.38 kB │ gzip: 82.18 kB\n\n✓ built in 271ms\n"
+    },
+    {
+      "argv": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "run",
+        "lint"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "output": ""
+    }
+  ],
+  "after": {
+    "frontend/src/styles.css": "ceab372e36b742e54b00d59303e5f1bcb881ae0d4dc7a538cb2f514ae0383bed",
+    "frontend/src/main.tsx": "5f399294fe164659d4b1edd5a28be0af796a2d30231ea67f50f7852272514d93",
+    "frontend/src/App.test.tsx": "60527da7746bf28bc32a3058aa5ba678204f2303ced7fc378f6362335c8efb98",
+    "frontend/src/Analyze.test.tsx": "3934c8d31c76bdf7409bb5e9d5573ba96d64fa12dac00fd64c6470085ca0ef07",
+    "frontend/src/test-setup.ts": "9b328c4843431fa76d8de00008fc159e95f99a840211085ff3b8f25e53d14409",
+    "frontend/src/App.tsx": "5c06c308c0a7956986274cb8bcb6f583a5c4a1b0e06ebdc1496cb9b10c0177f5",
+    "frontend/src/api.ts": "9a10fcea01e77f38768b8cceae60e6e337e12d71b081221dc7242b0d99687c38",
+    "frontend/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "frontend/src/WebDemo.test.tsx": "3bae24b565f456dd197bfe1bb95ad60d3494d2800d79fe0020e5c93796eb01f8",
+    "frontend/src/Compare.test.tsx": "7e1bd6021a0e1e2759ea63951cc98320f4c08d40e22df4cd9c80407c231b4eb2",
+    "frontend/package.json": "e3cc9ced40c32c2bc99f469b6abc05bd91fb42591525951b8592c1a391364f40",
+    "frontend/package-lock.json": "b575f479bbc8beab9b1d9223e49647ac1993da47d117e7be2fd0f2d3884a2d64",
+    "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+    "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f"
+  },
+  "unchanged": true
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "name": "inventory",
+    "argv": [
+      "bash",
+      "-c",
+      "git rev-parse HEAD; git status --short; node --version; npm --version; date -Is"
+    ],
+    "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+    "start_utc": "2026-11-13T13:54:20.900975+00:00",
+    "end_utc": "2026-11-13T13:54:21.247729+00:00",
+    "exit_code": 0
+  },
+  {
+    "name": "tests",
+    "argv": [
+      "npm",
+      "--prefix",
+      "frontend",
+      "test"
+    ],
+    "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+    "start_utc": "2026-11-13T13:54:21.247810+00:00",
+    "end_utc": "2026-11-13T13:54:33.426255+00:00",
+    "exit_code": 1
+  },
+  {
+    "name": "lint",
+    "argv": [
+      "npm",
+      "--prefix",
+      "frontend",
+      "run",
+      "lint"
+    ],
+    "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+    "start_utc": "2026-11-13T13:54:33.426334+00:00",
+    "end_utc": "2026-11-13T13:54:34.341546+00:00",
+    "exit_code": 0
+  },
+  {
+    "name": "build",
+    "argv": [
+      "npm",
+      "--prefix",
+      "frontend",
+      "run",
+      "build",
+      "--",
+      "--outDir",
+      "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project/audit-final/web-demo-stale-response-recheck-logs/frontend-dist"
+    ],
+    "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+    "start_utc": "2026-11-13T13:54:34.341592+00:00",
+    "end_utc": "2026-11-13T13:54:36.245394+00:00",
+    "exit_code": 0
+  },
+  {
+    "name": "diff-check",
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+    "start_utc": "2026-11-13T13:54:36.245453+00:00",
+    "end_utc": "2026-11-13T13:54:36.254630+00:00",
+    "exit_code": 0
+  }
+]

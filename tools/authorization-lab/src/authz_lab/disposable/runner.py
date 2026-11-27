@@ -11,9 +11,11 @@ import subprocess
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from authz_lab.common import write_redacted_json
+from .approval import approved_stage as approval_gate, current_budget
+from .stage import lifecycle, check_stage, durable_json
+from functools import wraps
 
 from .manifest import (
     ALLOWED_BASE_URL,
@@ -26,6 +28,26 @@ from .manifest import (
     validate_run_directory,
     validate_run_id,
 )
+
+def approved_stage(stage):
+    def decorate(function):
+        approved = approval_gate(stage)(lifecycle(stage)(function))
+        @wraps(function)
+        def guarded(run_id, project, run_dir, results_root="results/bfla-disposable", **kwargs):
+            check_stage(run_id, stage, results_root)
+            return approved(run_id, project, run_dir, results_root, **kwargs)
+        return guarded
+    return decorate
+
+
+class _RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise BflaManifestError("Disposable request redirects are prohibited.")
+
+
+# A request cap must not be bypassed by implicit follow-up requests.
+urlopen = build_opener(_RejectRedirects()).open
+
 
 SECRET_FILE_NAME = "roles.secret.json"
 SECRET_KEY_PATTERN = re.compile(r"(?:password|token|authorization|secret)", re.IGNORECASE)
@@ -101,6 +123,9 @@ def _request(
     payload: dict[str, Any] | None = None,
     allow_extended_scope: bool = False,
 ) -> tuple[int, Any]:
+    budget = current_budget.get()
+    if budget is not None:
+        budget.consume(path, method, payload)
     validate_base_url(ALLOWED_BASE_URL)
     if not path.startswith("/") or "?" in path or "#" in path:
         raise BflaManifestError("Disposable requests require exact path-only targets.")
@@ -120,6 +145,8 @@ def _request(
     except HTTPError as error:
         raw_body = error.read(16_384)
         status = error.code
+    if 300 <= status < 400:
+        raise BflaManifestError("Disposable request redirects are prohibited.")
     try:
         return status, json.loads(raw_body.decode("utf-8")) if raw_body else None
     except json.JSONDecodeError:
@@ -193,40 +220,52 @@ def _docker_project_volumes(project: str) -> list[str]:
 
 
 def _assert_disposable_runtime(project: str, expected_image_id: str | None = None) -> None:
+    from .preflight import compose_path
+
+    if not expected_image_id:
+        raise BflaExecutionError("An attested image identity is required.")
     containers = _docker_project_containers(project)
-    if len(containers) != 1 or len(_docker_project_volumes(project)) != 1:
-        raise BflaExecutionError("Disposable project identity or dedicated volume could not be attested.")
-    result = subprocess.run(
-        ["docker", "inspect", containers[0], "--format", "{{index .Config.Labels \"project.vampi_authz_lab.workflow\"}}"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0 or result.stdout.strip() != "disposable-bfla-v1":
-        raise BflaExecutionError("Disposable container lacks the required isolated-workflow identity label.")
-    binding = subprocess.run(
-        [
-            "docker",
-            "inspect",
-            containers[0],
-            "--format",
-            "{{.State.Running}} {{(index (index .HostConfig.PortBindings \"5000/tcp\") 0).HostIp}}:{{(index (index .HostConfig.PortBindings \"5000/tcp\") 0).HostPort}}",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if binding.returncode != 0 or binding.stdout.strip() != "true 127.0.0.1:5003":
-        raise BflaExecutionError("Disposable container is not running with the required loopback-only port binding.")
-    if expected_image_id is not None:
-        image = subprocess.run(
-            ["docker", "inspect", containers[0], "--format", "{{.Image}}"],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if image.returncode != 0 or image.stdout.strip() != expected_image_id:
-            raise BflaExecutionError("Disposable container image differs from the preflight-attested image.")
+    volumes = _docker_project_volumes(project)
+    expected_volume = project + "_vampi_db"
+    if len(containers) != 1 or volumes != [expected_volume]:
+        raise BflaExecutionError("Disposable object scope mismatch.")
+
+    def query(command):
+        result = subprocess.run(command, check=False, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise BflaExecutionError("Disposable inspect failed.")
+        return result.stdout.strip()
+
+    try:
+        records = json.loads(query(["docker", "inspect", containers[0]]))
+        volume_records = json.loads(query(["docker", "volume", "inspect", expected_volume]))
+        if len(records) != 1 or len(volume_records) != 1:
+            raise ValueError()
+        container, volume = records[0], volume_records[0]
+        labels = container["Config"]["Labels"]
+        config_hash = query(["docker", "compose", "--project-name", project,
+                             "--file", str(compose_path()), "config", "--hash", "vampi"])
+        # Compose prints either the digest alone or 'service digest'.
+        config_hash = config_hash.split()[-1]
+        if (labels.get("com.docker.compose.project") != project
+            or labels.get("com.docker.compose.service") != "vampi"
+            or labels.get("project.vampi_authz_lab.workflow") != "disposable-bfla-v1"
+            or labels.get("com.docker.compose.config-hash") != config_hash
+            or len(config_hash) != 64
+            or any(c not in "0123456789abcdef" for c in config_hash)
+            or container["Image"] != expected_image_id
+            or container["State"]["Running"] is not True
+            or container["HostConfig"]["PortBindings"] != {"5000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "5003"}]}
+            or volume["Name"] != expected_volume
+            or volume["Labels"].get("com.docker.compose.project") != project
+            or volume["Labels"].get("com.docker.compose.volume") != "vampi_db"):
+            raise ValueError()
+        mounts = container["Mounts"]
+        if len(mounts) != 1 or any((m.get("Type"), m.get("Name"), m.get("Destination"), m.get("RW")) !=
+                                  ("volume", expected_volume, "/vampi/database", True) for m in mounts):
+            raise ValueError()
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as error:
+        raise BflaExecutionError("Disposable mount/project/image/Compose attestation mismatch.") from error
 
 
 def _load_attested_preflight(run_id: str, project: str, results_root: str | Path) -> tuple[dict[str, Any], dict[str, str]]:
@@ -240,6 +279,7 @@ def _load_attested_preflight(run_id: str, project: str, results_root: str | Path
     return receipt, shared
 
 
+@lifecycle("prepare")
 def prepare(run_id: str, project: str, run_dir: str | Path, results_root: str | Path = "results/bfla-disposable") -> Path:
     """Initialize only the separate disposable DB and create its scoped fixtures."""
     run_id = validate_run_id(run_id)
@@ -279,16 +319,53 @@ def prepare(run_id: str, project: str, run_dir: str | Path, results_root: str | 
     return public_manifest
 
 
-def _profile_exists(target: dict[str, Any]) -> tuple[int, bool]:
+def _profile_state(path: str, username: str) -> tuple[int, dict[str, Any] | None]:
+    status, body = _request(path, "GET")
+    if status == 200 and isinstance(body, dict) and body.get("username") == username:
+        return status, body
+    return status, None
+
+
+def _profile_exists(target: dict[str, Any]) -> tuple[int, bool | None]:
+    """Only an exact 404 proves absence; invalid reads remain unknown."""
     path = target.get("path")
     if not isinstance(path, str):
         raise BflaManifestError("Disposable profile check requires a declared manifest target.")
     _assert_manifest_target(path, target)
-    status, _ = _request(path, "GET")
-    return status, status == 200
+    status, body = _profile_state(path, target["username"])
+    return status, True if body is not None else False if status == 404 else None
 
 
-def _receipt_record(run_id: str, project: str, protected_status: int, protected_exists: bool, control_status: int | None, control_exists: bool | None, outcome: str) -> dict[str, Any]:
+def _require_profile(target: dict[str, Any]) -> dict[str, Any]:
+    status, body = _profile_state(target["path"], target["username"])
+    if status != 200 or body is None:
+        raise BflaExecutionError("Fresh fixture profile precondition is invalid.")
+    return body
+
+
+def _require_principal(token: str, username: str, admin: bool) -> dict[str, Any]:
+    status, body = _request("/me", "GET", token=token, allow_extended_scope=True)
+    data = body.get("data") if isinstance(body, dict) else None
+    if (status != 200 or not isinstance(data, dict)
+            or data.get("username") != username or data.get("admin") is not admin):
+        raise BflaExecutionError("Principal or role attestation is invalid.")
+    return {"status": status, "username": data["username"], "admin": data["admin"]}
+
+
+def _validate_roles(secret: dict[str, Any], run_id: str) -> dict[str, dict[str, Any]]:
+    principals = {}
+    for role, username, admin in (
+        ("actor", f"bfla-{run_id}-actor", False), ("admin", "admin", True)
+    ):
+        entry = secret.get(role)
+        if (not isinstance(entry, dict) or entry.get("username") != username
+                or not isinstance(entry.get("token"), str) or not entry["token"]):
+            raise BflaExecutionError("Fixture principal is invalid.")
+        principals[role] = _require_principal(entry["token"], username, admin)
+    return principals
+
+
+def _receipt_record(run_id: str, project: str, protected_status: int, protected_exists: bool | None, control_status: int | None, control_exists: bool | None, outcome: str) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "workflow": "vampi-disposable-bfla-v1",
@@ -304,6 +381,26 @@ def _receipt_record(run_id: str, project: str, protected_status: int, protected_
     }
 
 
+def _delete_proof(target: dict[str, Any], baseline: dict[str, Any],
+                  principal: dict[str, Any], read_status: int,
+                  exists: bool | None) -> dict[str, Any]:
+    """Allowlisted observations only; an invalid profile read stays unknown."""
+    return {
+        "baseline": {"status": 200, "username": baseline["username"], "fresh": True},
+        "principal": principal,
+        "postcondition": {
+            "status": read_status if exists is not None else None,
+            "username": target["username"], "path": target["path"],
+        },
+    }
+
+
+def _attach_delete_proofs(receipt: dict[str, Any], proofs: dict[str, Any]) -> None:
+    for operation, proof in proofs.items():
+        receipt["operations"][operation]["proof"] = proof
+
+
+@approved_stage("execute")
 def execute(run_id: str, project: str, run_dir: str | Path, results_root: str | Path = "results/bfla-disposable") -> dict[str, Any]:
     """Run precisely the declared non-admin test and the separate admin control."""
     run_id = validate_run_id(run_id)
@@ -316,25 +413,36 @@ def execute(run_id: str, project: str, run_dir: str | Path, results_root: str | 
     secret = _load_secret(validate_run_directory(run_dir, run_id))
     if secret.get("run_id") != run_id:
         raise BflaManifestError("Disposable secret run ID does not match the manifest.")
+    principals = _validate_roles(secret, run_id)
     protected = manifest["destructive_targets"][0]
     control = manifest["destructive_targets"][1]
     _assert_manifest_target(protected["path"], protected)
     _assert_manifest_target(control["path"], control)
+    protected_baseline = _require_profile(protected)
     protected_status, _ = _request(protected["path"], "DELETE", token=secret["actor"]["token"])
-    _, protected_exists = _profile_exists(protected)
-    if protected_status == 200 or not protected_exists:
+    protected_read_status, protected_exists = _profile_exists(protected)
+    proofs = {"unprivileged_delete": _delete_proof(
+        protected, protected_baseline, principals["actor"], protected_read_status, protected_exists)}
+    if protected_exists is False:
         result = _receipt_record(run_id, project, protected_status, protected_exists, None, None, "BFLA_CONFIRMED_DESTRUCTIVE")
-        write_redacted_json(receipt_path(run_id, results_root), result)
+        _attach_delete_proofs(result, proofs)
+        durable_json(receipt_path(run_id, results_root), result)
         return result
-    if protected_status != protected["expected_status"]:
+    if protected_status != protected["expected_status"] or protected_exists is not True:
         result = _receipt_record(run_id, project, protected_status, protected_exists, None, None, "INCONCLUSIVE")
-        write_redacted_json(receipt_path(run_id, results_root), result)
+        _attach_delete_proofs(result, proofs)
+        durable_json(receipt_path(run_id, results_root), result)
         return result
+    control_baseline = _require_profile(control)
+    control_principal = _require_principal(secret["admin"]["token"], "admin", True)
     control_status, _ = _request(control["path"], "DELETE", token=secret["admin"]["token"])
-    _, control_exists = _profile_exists(control)
-    outcome = "DENIED_CONTROL" if control_status == 200 and not control_exists else "INCONCLUSIVE"
+    control_read_status, control_exists = _profile_exists(control)
+    proofs["admin_delete_control"] = _delete_proof(
+        control, control_baseline, control_principal, control_read_status, control_exists)
+    outcome = "DENIED_CONTROL" if control_status == 200 and control_exists is False else "INCONCLUSIVE"
     result = _receipt_record(run_id, project, protected_status, protected_exists, control_status, control_exists, outcome)
-    write_redacted_json(receipt_path(run_id, results_root), result)
+    _attach_delete_proofs(result, proofs)
+    durable_json(receipt_path(run_id, results_root), result)
     return result
 
 
@@ -343,6 +451,7 @@ def extended_receipt_path(run_id: str, results_root: str | Path = "results/bfla-
     return Path(results_root) / validate_run_id(run_id) / "extended-state-receipt.json"
 
 
+@approved_stage("execute-extended")
 def execute_extended(
     run_id: str, project: str, run_dir: str | Path, results_root: str | Path = "results/bfla-disposable"
 ) -> dict[str, Any]:
@@ -356,15 +465,22 @@ def execute_extended(
     if secret.get("run_id") != run_id:
         raise BflaManifestError("Disposable secret run ID does not match the manifest.")
 
-    actor_username = secret["actor"].get("username", f"bfla-{run_id}-actor")
+    actor_username = secret["actor"].get("username")
     actor_token = secret["actor"]["token"]
+    _validate_roles(secret, run_id)
     protected = manifest["destructive_targets"][0]
     victim_username = protected["username"]
     victim_profile_path = protected["path"]
     _assert_manifest_target(victim_profile_path, protected)
 
     # 1. PUT /users/v1/{victim}/email (HTTP 204 False Positive check)
+    victim_before = _require_profile(protected)
+    actor_target = {"path": f"/users/v1/{actor_username}", "username": actor_username}
+    actor_before = _require_profile(actor_target)
     probe_email = f"probe-{run_id}@example.test"
+    if (not all(isinstance(profile.get("email"), str) for profile in (victim_before, actor_before))
+            or probe_email in (victim_before.get("email"), actor_before.get("email"))):
+        raise BflaExecutionError("Email probe lacks a fresh baseline.")
     email_status, _ = _request(
         f"{victim_profile_path}/email",
         "PUT",
@@ -372,20 +488,32 @@ def execute_extended(
         payload={"email": probe_email},
         allow_extended_scope=True,
     )
-    _, victim_after_email = _request(victim_profile_path, "GET", allow_extended_scope=True)
-    _, actor_after_email = _request(f"/users/v1/{actor_username}", "GET", allow_extended_scope=True)
-    victim_email_modified = isinstance(victim_after_email, dict) and victim_after_email.get("email") == probe_email
-    actor_email_modified = isinstance(actor_after_email, dict) and actor_after_email.get("email") == probe_email
+    _, victim_after_email = _profile_state(victim_profile_path, victim_username)
+    _, actor_after_email = _profile_state(actor_target["path"], actor_username)
+    victim_email_modified = (
+        victim_after_email.get("email") == probe_email if victim_after_email is not None and isinstance(victim_after_email.get("email"), str) else None
+    )
+    actor_email_modified = (
+        actor_after_email.get("email") == probe_email if actor_after_email is not None and isinstance(actor_after_email.get("email"), str) else None
+    )
     email_verdict = (
         "FALSE_POSITIVE_HTTP_204_SELF_UPDATE"
-        if email_status == 204 and not victim_email_modified and actor_email_modified
+        if (email_status == 204 and victim_email_modified is False and actor_email_modified is True
+            and victim_after_email["email"] == victim_before["email"])
         else "WRITE_BOLA_CONFIRMED"
         if email_status == 204 and victim_email_modified
         else "DENIED_OR_INCONCLUSIVE"
     )
 
     # 2. PUT /users/v1/{victim}/password (Write-BOLA Account Takeover check)
+    _require_profile(protected)
     takeover_pass = _random_password()
+    baseline_login_status, _ = _request(
+        "/users/v1/login", "POST",
+        payload={"username": victim_username, "password": takeover_pass}, allow_extended_scope=True,
+    )
+    if baseline_login_status not in {401, 403}:
+        raise BflaExecutionError("New credential rejection precondition is invalid.")
     cred_status, _ = _request(
         f"{victim_profile_path}/password",
         "PUT",
@@ -403,8 +531,11 @@ def execute_extended(
         cred_status == 204
         and login_status == 200
         and isinstance(login_body, dict)
-        and bool(login_body.get("auth_token"))
+        and isinstance(login_body.get("auth_token"), str)
+        and bool(login_body["auth_token"])
     )
+    if victim_taken_over:
+        _require_principal(login_body["auth_token"], victim_username, False)
     cred_verdict = "WRITE_BOLA_CONFIRMED_ACCOUNT_TAKEOVER" if victim_taken_over else "DENIED_OR_INCONCLUSIVE"
 
     # 3. POST /users/v1/register with {"admin": true} (Mass Assignment -> Privilege Escalation)
@@ -429,8 +560,11 @@ def execute_extended(
         me_status == 200
         and isinstance(me_body, dict)
         and isinstance(me_body.get("data"), dict)
+        and me_body["data"].get("username") == escalated_username
         and me_body["data"].get("admin") is True
     )
+    if admin_flag_granted:
+        _require_profile(protected)
     esc_delete_status, _ = (
         _request(victim_profile_path, "DELETE", token=esc_token, allow_extended_scope=True)
         if admin_flag_granted
@@ -439,7 +573,7 @@ def execute_extended(
     _, victim_survived_after_esc = _profile_exists(protected)
     mass_assignment_verdict = (
         "MASS_ASSIGNMENT_PRIVILEGE_ESCALATION_CONFIRMED"
-        if admin_flag_granted and esc_delete_status == 200 and not victim_survived_after_esc
+        if admin_flag_granted and esc_delete_status == 200 and victim_survived_after_esc is False
         else "DENIED_OR_INCONCLUSIVE"
     )
 
@@ -468,13 +602,13 @@ def execute_extended(
                 "status": reg_status,
                 "admin_flag_granted": admin_flag_granted,
                 "escalated_delete_status": esc_delete_status,
-                "victim_deleted_by_escalated_user": not victim_survived_after_esc,
+                "victim_deleted_by_escalated_user": None if victim_survived_after_esc is None else not victim_survived_after_esc,
                 "verdict": mass_assignment_verdict,
             },
         },
         "credential_or_response_bodies_exported": False,
     }
-    write_redacted_json(extended_receipt_path(run_id, results_root), extended_record)
+    durable_json(extended_receipt_path(run_id, results_root), extended_record)
     return extended_record
 
 

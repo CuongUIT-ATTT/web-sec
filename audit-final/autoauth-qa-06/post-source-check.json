@@ -1,0 +1,8 @@
+{
+  "backend/app/services/authorization_execution.py": true,
+  "backend/app/api/authorization_routes.py": true,
+  "backend/app/workers/runner.py": true,
+  "backend/app/scanner/classification/evaluator.py": true,
+  "backend/tests/test_authorization_execution.py": true,
+  "frontend/src/AuthorizationWorkflow.test.tsx": true
+}

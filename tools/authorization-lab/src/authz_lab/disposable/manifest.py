@@ -100,7 +100,7 @@ def build_manifest(run_id: str) -> dict[str, Any]:
     delete_control = validate_username(f"bfla-{run_id}-delete-control", run_id, "delete-control")
     project = expected_project_name(run_id)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "workflow": WORKFLOW,
         "run_id": run_id,
         "target": {
@@ -135,6 +135,7 @@ def build_manifest(run_id: str) -> dict[str, Any]:
                 "must_not_exist_after_attempt": True,
             },
         ],
+        "execution_scopes": execution_scopes(run_id),
         "prohibitions": [
             f"any-target-other-than-{ALLOWED_BASE_URL}",
             "any-path-not-listed-above",
@@ -175,7 +176,7 @@ def validate_manifest(manifest: Any) -> dict[str, Any]:
     """Validate one materialized manifest against the fixed destructive scope."""
     if not isinstance(manifest, dict):
         raise BflaManifestError("Disposable BFLA manifest must be an object.")
-    if manifest.get("schema_version") != 1 or manifest.get("workflow") != WORKFLOW:
+    if manifest.get("schema_version") not in (1, 2) or manifest.get("workflow") != WORKFLOW:
         raise BflaManifestError("Unsupported disposable BFLA manifest format.")
     run_id = validate_run_id(manifest.get("run_id"))
     expected = build_manifest(run_id)
@@ -191,6 +192,8 @@ def validate_manifest(manifest: Any) -> dict[str, Any]:
         raise BflaManifestError("Disposable manifest initialization differs from the one-time guarded reset.")
     if manifest.get("prohibitions") != expected["prohibitions"]:
         raise BflaManifestError("Disposable manifest prohibitions differ from the approved scope.")
+    if manifest["schema_version"] == 2 and manifest != expected:
+        raise BflaManifestError("Manifest differs from canonical v2 scope.")
     return manifest
 
 
@@ -207,3 +210,22 @@ def write_manifest(run_id: str, results_root: str | Path = "results/bfla-disposa
 def load_manifest(path: str | Path) -> dict[str, Any]:
     """Load and validate an existing public manifest without reading secrets."""
     return validate_manifest(read_json(path))
+
+
+def execution_scopes(run_id: str) -> dict[str, Any]:
+    """Exact wire operations, payload field sets and caps; stages never inherit scope."""
+    victim = f"/users/v1/bfla-{run_id}-victim"
+    actor = f"/users/v1/bfla-{run_id}-actor"
+    control = f"/users/v1/bfla-{run_id}-delete-control"
+    def rule(method, path, fields=()):
+        return {"method": method, "path": path, "payload_fields": list(fields)}
+    reads = [rule("GET", "/me"), rule("GET", victim)]
+    return {
+        "execute": {"request_cap": 9, "operations": reads + [rule("DELETE", victim), rule("GET", control), rule("DELETE", control)]},
+        "execute-extended": {"request_cap": 22, "operations": reads + [
+            rule("GET", actor), rule("PUT", victim + "/email", ("email",)),
+            rule("PUT", victim + "/password", ("password",)),
+            rule("POST", "/users/v1/login", ("password", "username")),
+            rule("POST", "/users/v1/register", ("admin", "email", "password", "username")),
+            rule("DELETE", victim)]},
+    }

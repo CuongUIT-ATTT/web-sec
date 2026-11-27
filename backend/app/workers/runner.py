@@ -14,7 +14,7 @@ from backend.app.core.settings import Settings
 from backend.app.domain.contracts import AuthorizationConclusion, ExecutionStatus, PolicyDecision, RunStatus
 from backend.app.persistence.models import BatchCaseClaim, Run, RunExecutionStats, RunIdentitySecret, RunResult
 from backend.app.services.findings import record_confirmed_reproduction
-from backend.app.scanner.classification.evaluator import Observation, evaluate
+from backend.app.scanner.classification.evaluator import Observation, evaluate, restricted_evidence_valid, restricted_fields_match
 from backend.app.scanner.classification.json_pointer import JsonPointerError, resolve_pointer
 from backend.app.scanner.classification.policy import PolicyRule, resolve_policy
 from backend.app.scanner.execution.http_client import HttpObservation, get_json
@@ -33,12 +33,85 @@ def _principal_matches(identity: dict[str, object], observation: HttpObservation
     pointer, expected = identity.get("principal_pointer"), identity.get("expected_principal")
     if (observation.execution_status != ExecutionStatus.COMPLETED_RESPONSE or observation.status_code is None
             or not 200 <= observation.status_code < 300 or not isinstance(pointer, str)
-            or not isinstance(expected, str) or observation.json_body is None):
+            or not isinstance(expected, str) or observation.json_body is None
+            or observation.body_truncated or observation.parse_error):
         return False
     try:
         return str(resolve_pointer(observation.json_body, pointer)) == expected
     except JsonPointerError:
         return False
+
+
+def _resource_matches(body, resource: dict) -> bool:
+    try:
+        return str(resolve_pointer(body, str(resource["resource_id_pointer"]))) == str(resource["external_id"])
+    except JsonPointerError:
+        return False
+
+
+def _owner_control_valid(owner, verification, baseline: HttpObservation, resource: dict) -> bool:
+    return bool(owner is not None and verification is not None and _principal_matches(owner, verification)
+                and baseline.execution_status == ExecutionStatus.COMPLETED_RESPONSE
+                and baseline.status_code is not None and 200 <= baseline.status_code < 300
+                and not baseline.body_truncated and not baseline.parse_error
+                and _resource_matches(baseline.json_body, resource)
+                and restricted_evidence_valid(baseline.json_body, tuple(resource["restricted_pointers"])))
+
+
+def _evidence_metadata(*, run_id, case_key, resource, identity, verification, owner,
+                       owner_verification, baseline, response, resolution, owner_valid):
+    """Fixed-key summary only: no response values, pointers, labels, paths or errors."""
+    def role(value):
+        # Role strings are configured labels: expose only bounded simple names.
+        import re
+        candidate = value.get("role") if value else None
+        return candidate if isinstance(candidate, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,31}", candidate) else None
+
+    actor_role, owner_role = role(identity), role(owner)
+    ownership = ("self" if owner and identity["id"] == owner["id"] else
+                 "same-role-other" if actor_role and actor_role == owner_role else
+                 "cross-role" if actor_role and owner_role else "unknown")
+    fields = []
+    for index, pointer in enumerate(resource["restricted_pointers"]):
+        def field(body):
+            try:
+                value = resolve_pointer(body, pointer)
+                return True, type(value).__name__
+            except JsonPointerError:
+                return False, None
+        owner_present, owner_type = field(baseline.json_body)
+        actor_present, actor_type = field(response.json_body)
+        fields.append(dict(alias=f"protected-{index + 1}", owner_present=owner_present,
+                           actor_present=actor_present, owner_type=owner_type, actor_type=actor_type,
+                           matches_owner=restricted_fields_match(baseline.json_body, response.json_body, (pointer,))))
+    return {
+        "body_length": response.body_length,
+        "body_truncated": response.body_truncated,
+        "json_parse_error": response.parse_error,
+        "evidence": {
+            "schema_version": 2, "engine": "web-evaluator-v1",
+            "actor_role": actor_role, "owner_role": owner_role, "ownership": ownership,
+            "protected_fields": fields,
+            "run_id": run_id, "case_key": case_key,
+            "resource_id": int(resource["id"]), "actor_identity_id": int(identity["id"]),
+            "owner_identity_id": int(resource["owner_identity_id"]),
+            "owner_control_valid": owner_valid,
+            "owner_http_status": baseline.status_code,
+            "owner_execution_status": baseline.execution_status,
+            "owner_body_truncated": baseline.body_truncated,
+            "owner_json_parse_error": baseline.parse_error,
+            "owner_principal_matches": bool(owner and owner_verification and _principal_matches(owner, owner_verification)),
+            "actor_principal_matches": _principal_matches(identity, verification),
+            "owner_resource_matches": _resource_matches(baseline.json_body, resource),
+            "actor_resource_matches": _resource_matches(response.json_body, resource),
+            "owner_restricted_evidence_valid": restricted_evidence_valid(baseline.json_body, tuple(resource["restricted_pointers"])),
+            "restricted_fields_match_owner": restricted_fields_match(baseline.json_body, response.json_body, tuple(resource["restricted_pointers"])),
+            "policy_id": resolution.rule.id if resolution.rule else None,
+            "policy_version": resolution.rule.version if resolution.rule else None,
+            "policy_decision": resolution.rule.decision if resolution.rule else None,
+            "policy_resolution": resolution.status,
+        },
+    }
 
 
 def _payload_fingerprint(*, execution_status: str, conclusion: str, reason_codes: list[str], http_status: int | None, metadata: dict[str, object]) -> str:
@@ -86,6 +159,8 @@ def _record_batch_result(
 
 
 def _cancelled_actor_keys(snapshot: dict[str, object]) -> list[str]:
+    if snapshot.get("run_kind") == "AUTOAUTH_SELECTED":
+        return [c["case_id"] for c in snapshot.get("cases", [])]
     identities = snapshot.get("identities", [])
     targets = snapshot.get("targets", [])
     keys: list[str] = []
@@ -111,9 +186,12 @@ def _cancel_remaining_batch_cases(session: Session, run: Run) -> None:
             BatchCaseClaim.run_id == run.id,
             BatchCaseClaim.case_key == case_key,
         )) is None
+        if not was_missing:
+            continue
         result = _record_batch_result(
             session, run=run, case_key=case_key, execution_status=ExecutionStatus.CANCELLED,
-            conclusion=AuthorizationConclusion.NOT_EVALUATED, reason_codes=["execution.cancelled"],
+            conclusion=(AuthorizationConclusion.NOT_RUN if run.snapshot.get("run_kind") == "AUTOAUTH_SELECTED"
+                        else AuthorizationConclusion.NOT_EVALUATED), reason_codes=["execution.cancelled"],
             http_status=None, metadata={},
         )
         if was_missing and result is not None and result.execution_status == ExecutionStatus.CANCELLED:
@@ -180,17 +258,13 @@ async def _execute_single_run(session: Session, run: Run, settings: Settings) ->
     operation_path = _concrete_path(str(operation["path"]), str(resource["path_parameter"]), str(resource["external_id"]))
     baseline = await get_json(base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[owner_id], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
     owner = next((identity for identity in identities if int(identity["id"]) == owner_id), None)
-    owner_valid = owner is not None and _principal_matches(owner, verification[owner_id]) and baseline.json_body is not None
-    try:
-        owner_valid = owner_valid and str(resolve_pointer(baseline.json_body, str(resource["resource_id_pointer"]))) == str(resource["external_id"])
-    except JsonPointerError:
-        owner_valid = False
+    owner_valid = _owner_control_valid(owner, verification.get(owner_id), baseline, resource)
     rules = [PolicyRule(int(item["id"]), int(item["version"]), int(item["operation_id"]), int(item["resource_type_id"]), item["identity_id"], item["role"], item["resource_id"], PolicyDecision(item["decision"])) for item in policies]
     for identity in identities:
         response = await get_json(base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[int(identity["id"])], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
         resolution = resolve_policy(rules, operation_id=int(policies[0]["operation_id"]) if policies else -1, resource_type_id=int(resource["resource_type_id"]), identity_id=int(identity["id"]), role=identity.get("role"), resource_id=int(resource["id"]))
         evaluation = evaluate(policy_status=resolution.status, policy_decision=resolution.rule.decision if resolution.rule else None, identity_confirmed=_principal_matches(identity, verification[int(identity["id"])]), owner_control_valid=owner_valid, requested_resource_id=str(resource["external_id"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), owner_body=baseline.json_body, observation=_as_observation(response))
-        result = RunResult(run_id=run.id, case_key=f"resource:{resource['id']}:actor:{identity['id']}", execution_status=response.execution_status, authorization_conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, response_metadata={"body_length": response.body_length, "body_truncated": response.body_truncated, "json_parse_error": response.parse_error})
+        result = RunResult(run_id=run.id, case_key=f"resource:{resource['id']}:actor:{identity['id']}", execution_status=response.execution_status, authorization_conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, response_metadata=_evidence_metadata(run_id=run.id, case_key=f"resource:{resource['id']}:actor:{identity['id']}", resource=resource, identity=identity, verification=verification[int(identity["id"])], owner=owner, owner_verification=verification.get(owner_id), baseline=baseline, response=response, resolution=resolution, owner_valid=owner_valid))
         session.add(result); session.flush()
         if evaluation.conclusion == AuthorizationConclusion.CONFIRMED_VIOLATION and resolution.rule is not None:
             record_confirmed_reproduction(session, project_id=run.project_id, run_result=result, actor_identity_id=int(identity["id"]), resource_id=int(resource["id"]), operation_path=str(operation["path"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), policy=resolution.rule)
@@ -243,16 +317,14 @@ async def _execute_batch_run(session: Session, run: Run, settings: Settings) -> 
             fail_run(session, run.id); return
         baseline = await _tracked_get(session, run, stats, base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[owner_id], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
         if baseline is None: return
-        owner_valid = _principal_matches(owner, verification[owner_id]) and baseline.json_body is not None
-        try: owner_valid = owner_valid and str(resolve_pointer(baseline.json_body, str(resource["resource_id_pointer"]))) == str(resource["external_id"])
-        except JsonPointerError: owner_valid = False
+        owner_valid = _owner_control_valid(owner, verification.get(owner_id), baseline, resource)
         for identity in identities:
             response = await _tracked_get(session, run, stats, base_url=str(target["base_url"]), api_path=operation_path, bearer_token=tokens[int(identity["id"])], settings=settings, timeout_seconds=float(target["timeout_seconds"]))
             if response is None: return
             identity_id = int(identity["id"])
             resolution = resolve_policy(rules, operation_id=operation_id, resource_type_id=resource_type_id, identity_id=identity_id, role=identity.get("role") if isinstance(identity.get("role"), str) else None, resource_id=resource_id)
             evaluation = evaluate(policy_status=resolution.status, policy_decision=resolution.rule.decision if resolution.rule else None, identity_confirmed=_principal_matches(identity, verification[identity_id]), owner_control_valid=owner_valid, requested_resource_id=str(resource["external_id"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), owner_body=baseline.json_body, observation=_as_observation(response))
-            result = _record_batch_result(session, run=run, case_key=f"operation:{operation_id}:resource:{resource_id}:actor:{identity_id}", execution_status=response.execution_status, conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, metadata={"body_length": response.body_length, "body_truncated": response.body_truncated, "json_parse_error": response.parse_error})
+            result = _record_batch_result(session, run=run, case_key=f"operation:{operation_id}:resource:{resource_id}:actor:{identity_id}", execution_status=response.execution_status, conclusion=evaluation.conclusion, reason_codes=list(evaluation.reason_codes), http_status=response.status_code, metadata=_evidence_metadata(run_id=run.id, case_key=f"operation:{operation_id}:resource:{resource_id}:actor:{identity_id}", resource=resource, identity=identity, verification=verification[identity_id], owner=owner, owner_verification=verification.get(owner_id), baseline=baseline, response=response, resolution=resolution, owner_valid=owner_valid))
             if result is None: return
             if evaluation.conclusion == AuthorizationConclusion.CONFIRMED_VIOLATION and resolution.rule is not None:
                 record_confirmed_reproduction(session, project_id=run.project_id, run_result=result, actor_identity_id=identity_id, resource_id=resource_id, operation_path=str(operation["path"]), resource_pointer=str(resource["resource_id_pointer"]), restricted_pointers=tuple(resource["restricted_pointers"]), policy=resolution.rule)
@@ -270,9 +342,15 @@ async def _execute_batch_run(session: Session, run: Run, settings: Settings) -> 
 async def execute_run(session: Session, run: Run, settings: Settings) -> bool:
     """Execute only a durably claimed RUNNING run; terminal/replayed calls are no-ops."""
     session.refresh(run)
+    if run.status == RunStatus.CANCEL_REQUESTED:
+        _cancel_remaining_batch_cases(session, run)
+        return True
     if run.status != RunStatus.RUNNING:
         return False
-    if run.snapshot.get("run_kind") == "BATCH_ALL_SELECTED":
+    if run.snapshot.get("run_kind") == "AUTOAUTH_SELECTED":
+        from backend.app.workers.authorization_runner import execute_authorization_run
+        await execute_authorization_run(session, run, settings)
+    elif run.snapshot.get("run_kind") == "BATCH_ALL_SELECTED":
         await _execute_batch_run(session, run, settings)
     else:
         await _execute_single_run(session, run, settings)

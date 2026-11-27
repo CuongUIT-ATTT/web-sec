@@ -1,0 +1,31 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { DeleteProject } from "./App";
+import { api } from "./api";
+vi.mock("./api", () => ({ api: { deleteProject: vi.fn() } }));
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
+const project = { id: 7, name: "SSH Lab", description: "" };
+it("requires exact name, warns about evidence and supports cancel", () => {
+  render(<DeleteProject project={project} onDeleted={vi.fn()} />);
+  fireEvent.click(screen.getByText("Xóa dự án"));
+  expect(screen.getByText(/toàn bộ lịch sử\/evidence/)).toBeInTheDocument();
+  const confirm = screen.getByText("Xác nhận xóa vĩnh viễn");
+  expect(confirm).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Nhập đúng tên dự án để xóa"), { target: { value: "ssh lab" } });
+  expect(confirm).toBeDisabled();
+  fireEvent.click(screen.getByText("Hủy xóa"));
+  expect(api.deleteProject).not.toHaveBeenCalled();
+});
+it("retains project on conflict and notifies parent only after success", async () => {
+  const onDeleted = vi.fn();
+  vi.mocked(api.deleteProject).mockRejectedValueOnce(new Error("Run đang chạy")).mockResolvedValueOnce(undefined);
+  render(<DeleteProject project={project} onDeleted={onDeleted} />);
+  fireEvent.click(screen.getByText("Xóa dự án"));
+  fireEvent.change(screen.getByLabelText("Nhập đúng tên dự án để xóa"), { target: { value: project.name } });
+  fireEvent.click(screen.getByText("Xác nhận xóa vĩnh viễn"));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Run đang chạy");
+  expect(onDeleted).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Xác nhận xóa vĩnh viễn"));
+  await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
+  expect(api.deleteProject).toHaveBeenLastCalledWith(7, "SSH Lab");
+});

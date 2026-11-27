@@ -44,7 +44,31 @@ def test_workflow_configuration_survives_api_reload(tmp_path) -> None:
     assert resource.status_code == 201
     assert targets.json()[0]["base_url"] == "http://127.0.0.1:5000"
     assert types.json()[0]["restricted_pointers"] == ["/data/secret"]
-    assert resources.json()[0]["external_id"] == "book-1"
+    assert resources.json()[0]["external_id"] == "[REDACTED]"
+    assert resources.json()[0]["resource_alias"] == f"resource-{resource.json()['id']}"
+    assert resource.json()["external_id"] == "[REDACTED]"
+    assert resource.json()["resource_alias"] == resources.json()[0]["resource_alias"]
+    assert "book-1" not in resource.text
+    assert "book-1" not in resources.text
+
+    # Reopen the app against the same temporary SQLite file: presentation
+    # redaction must not replace the execution configuration in storage.
+    from backend.app.persistence.models import Resource
+
+    reloaded_app = create_app(settings)
+    with TestClient(reloaded_app) as reloaded_client:
+        headers(reloaded_client)
+        reloaded_resources = reloaded_client.get(f"/api/projects/{project_id}/resources")
+        assert reloaded_resources.status_code == 200
+        assert reloaded_resources.json() == resources.json()
+        assert "book-1" not in reloaded_resources.text
+        with reloaded_app.state.session_factory() as session:
+            stored_resource = session.get(Resource, resource.json()["id"])
+            assert stored_resource is not None
+            assert stored_resource.external_id == "book-1"
+            assert stored_resource.owner_identity_id == alice.json()["id"]
+            assert stored_resource.path_parameter == "id"
+            assert stored_resource.resource_type_id == resource_type.json()["id"]
 
 
 def test_batch_mapping_preview_and_queue_are_configuration_only(tmp_path) -> None:

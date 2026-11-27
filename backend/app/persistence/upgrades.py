@@ -11,6 +11,7 @@ from sqlalchemy import Engine, inspect, text
 
 T18_MIGRATION_ID = "20261106_t18_batch_execution_ledger"
 T19_MIGRATION_ID = "20261113_t19_external_lab_jobs"
+AUTOAUTH_MIGRATION_ID = "20261116_project_authorization_revisions"
 
 
 class UpgradeError(RuntimeError):
@@ -163,6 +164,20 @@ def upgrade_database(engine: Engine) -> DuplicateCaseKeyReport:
                 connection.execute(
                     text("INSERT INTO schema_migrations (migration_id) VALUES (:migration_id)"),
                     {"migration_id": T19_MIGRATION_ID},
+                )
+            applied_authorization = connection.execute(
+                text("SELECT 1 FROM schema_migrations WHERE migration_id = :migration_id"),
+                {"migration_id": AUTOAUTH_MIGRATION_ID},
+            ).scalar()
+            if not applied_authorization:
+                # create_all creates this new table before upgrades; never ALTER
+                # legacy policy, run, identity or evidence tables.
+                required = {"id", "project_id", "revision", "configuration", "created_at"}
+                if not required.issubset(_table_columns(connection, "project_authorization_revisions")):
+                    raise UpgradeError("Project authorization revision table missing or incompatible.")
+                connection.execute(
+                    text("INSERT INTO schema_migrations (migration_id) VALUES (:migration_id)"),
+                    {"migration_id": AUTOAUTH_MIGRATION_ID},
                 )
             connection.execute(text("COMMIT"))
         except Exception:

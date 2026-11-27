@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.app.api.schemas import IdentityCreate, IdentityUpdate, IdentityVerificationView, IdentityView, LoginRequest, LoginResponse, ProjectCreate, ProjectUpdate, ProjectView, TargetConnectionView, TargetCreate, TargetUpdate, TargetView
+from backend.app.api.schemas import IdentityCreate, IdentityUpdate, IdentityVerificationView, IdentityView, LoginRequest, LoginResponse, ProjectCreate, ProjectDelete, ProjectUpdate, ProjectView, TargetConnectionView, TargetCreate, TargetUpdate, TargetView
 from backend.app.core.auth import establish_admin_session, require_admin, require_csrf, verify_admin_password
 from backend.app.core.secrets import SecretBox, SecretError
 from backend.app.scanner.classification.json_pointer import JsonPointerError, validate_pointer
@@ -73,6 +73,12 @@ def update_project(project_id: int, payload: ProjectUpdate, _: None = Depends(re
         raise HTTPException(status_code=409, detail="Tên dự án đã tồn tại.") from error
     session.refresh(project)
     return project
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_project(project_id: int, payload: ProjectDelete, _: None = Depends(require_csrf), session: Session = Depends(get_session)) -> None:
+    from backend.app.services.project_deletion import delete_project
+    delete_project(session, project_id, payload.confirmation_name)
 
 
 @router.post("/projects/{project_id}/targets", response_model=TargetView, status_code=status.HTTP_201_CREATED)
@@ -160,7 +166,7 @@ def create_identity(project_id: int, payload: IdentityCreate, request: Request, 
         session.commit()
     except IntegrityError as error:
         session.rollback()
-        raise HTTPException(status_code=409, detail="Danh tính hoặc bearer token đã tồn tại.") from error
+        raise HTTPException(status_code=409, detail="Tên danh tính đã tồn tại trong dự án hoặc bearer token đã được dùng bởi một danh tính trong hệ thống. Sửa danh tính hiện có hoặc dùng token riêng; tạo dự án khác không bỏ qua ràng buộc token.") from error
     session.refresh(identity)
     return serialize_identity(identity)
 
@@ -192,7 +198,7 @@ def update_identity(identity_id: int, payload: IdentityUpdate, request: Request,
         session.commit()
     except IntegrityError as error:
         session.rollback()
-        raise HTTPException(status_code=409, detail="Danh tính hoặc bearer token đã tồn tại.") from error
+        raise HTTPException(status_code=409, detail="Tên danh tính đã tồn tại trong dự án hoặc bearer token đã được dùng bởi một danh tính trong hệ thống. Sửa danh tính hiện có hoặc dùng token riêng; tạo dự án khác không bỏ qua ràng buộc token.") from error
     session.refresh(identity)
     return serialize_identity(identity)
 

@@ -67,47 +67,81 @@ def _build_findings(
     manifest: dict[str, Any],
 ) -> dict[str, Any]:
     """Transform an execution receipt into a evaluation BFLA findings artifact."""
-    ops = execution_receipt.get("operations", {})
-    unprivileged = ops.get("unprivileged_delete", {})
-    admin_ctrl = ops.get("admin_delete_control", {})
+    # Schema v1 producer currently omits proof. Never infer it from outcome,
+    # HTTP success, or the fact that prepare once registered a target.
+    def mapping(value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
 
-    targets = manifest.get("destructive_targets", [])
-    victim_username = targets[0]["username"] if len(targets) > 0 else "unknown"
-    control_username = targets[1]["username"] if len(targets) > 1 else "unknown"
+    receipt = mapping(execution_receipt)
+    manifest = mapping(manifest)
+    ops = mapping(receipt.get("operations"))
+    targets = manifest.get("destructive_targets")
+    targets = targets if isinstance(targets, list) else []
+    context_valid = (
+        receipt.get("run_id") == run_id
+        and manifest.get("run_id") == run_id
+        and type(receipt.get("schema_version")) is int
+        and receipt.get("schema_version") == 1
+        and receipt.get("workflow") == "vampi-disposable-bfla-v1"
+        and receipt.get("target") == "http://127.0.0.1:5003"
+    )
 
-    cases = [
-        {
-            "id": "non-admin-delete-victim",
-            "actor": f"unprivileged (bfla-{run_id}-actor)",
-            "target": victim_username,
-            "pre_condition": "user exists (registered during prepare)",
-            "delete_status": unprivileged.get("status"),
-            "post_condition": "user still exists"
-            if unprivileged.get("target_survived")
-            else "user absent",
-            "verdict": "DENIED"
-            if unprivileged.get("target_survived")
-            else "BFLA_CONFIRMED",
-        },
-    ]
-
-    if admin_ctrl.get("status") is not None:
-        cases.append(
-            {
-                "id": "admin-delete-control",
-                "actor": "admin (bootstrap)",
-                "target": control_username,
-                "pre_condition": "user exists (registered during prepare)",
-                "delete_status": admin_ctrl.get("status"),
-                "post_condition": "user absent"
-                if admin_ctrl.get("target_absent")
-                else "user still exists",
-                "verdict": "POSITIVE_CONTROL"
-                if admin_ctrl.get("target_absent")
-                else "INCONCLUSIVE",
-            }
+    def case(index: int, key: str, admin: bool) -> dict[str, Any]:
+        operation = mapping(ops.get(key))
+        target = mapping(targets[index]) if len(targets) > index else {}
+        username = target.get("username")
+        expected_username = f"bfla-{run_id}-" + ("delete-control" if admin else "victim")
+        path = f"/users/v1/{expected_username}"
+        proof = mapping(operation.get("proof"))
+        baseline = mapping(proof.get("baseline"))
+        principal = mapping(proof.get("principal"))
+        post = mapping(proof.get("postcondition"))
+        status = operation.get("status")
+        valid = (
+            context_valid and username == expected_username and target.get("path") == path
+            and type(status) is int and 100 <= status <= 599
+            and baseline.get("status") == 200 and type(baseline.get("status")) is int
+            and baseline.get("username") == username and baseline.get("fresh") is True
+            and principal.get("status") == 200 and type(principal.get("status")) is int
+            and principal.get("username") == ("admin" if admin else f"bfla-{run_id}-actor")
+            and principal.get("admin") is admin
+            and post.get("username") == username and post.get("path") == path
         )
+        state = operation.get("target_absent" if admin else "target_survived")
+        absent = state is (True if admin else False)
+        exists = state is (False if admin else True)
+        absent = valid and absent and type(post.get("status")) is int and post.get("status") == 404
+        exists = valid and exists and type(post.get("status")) is int and post.get("status") == 200
+        verdict = "INCONCLUSIVE"
+        if absent and (not admin or status == 200):
+            verdict = "POSITIVE_CONTROL" if admin else "BFLA_CONFIRMED"
+        elif exists and not admin and status == target.get("expected_status") == 401:
+            verdict = "DENIED"
+        return {
+            "id": "admin-delete-control" if admin else "non-admin-delete-victim",
+            "actor": "admin (bootstrap)" if admin else f"unprivileged (bfla-{run_id}-actor)",
+            "target": username if isinstance(username, str) else "unknown",
+            "pre_condition": "fresh user profile verified" if valid else "unverified",
+            "delete_status": status if type(status) is int else None,
+            "post_condition": "user absent" if absent else "user still exists" if exists else "unknown",
+            "verdict": verdict,
+        }
 
+    cases = [case(0, "unprivileged_delete", False)]
+    if mapping(ops.get("admin_delete_control")).get("status") is not None:
+        cases.append(case(1, "admin_delete_control", True))
+    derived = "INCONCLUSIVE"
+    if cases[0]["verdict"] == "BFLA_CONFIRMED":
+        derived = "BFLA_CONFIRMED_DESTRUCTIVE"
+    elif (cases[0]["verdict"] == "DENIED" and len(cases) == 2
+          and cases[1]["verdict"] == "POSITIVE_CONTROL"):
+        derived = "DENIED_CONTROL"
+    # A contradictory producer summary invalidates classification, even if a
+    # subset of fields appears positive. Keep observations, never trust summary.
+    if receipt.get("outcome") != derived:
+        derived = "INCONCLUSIVE"
+        for item in cases:
+            item["verdict"] = "INCONCLUSIVE"
     return {
         "schema_version": 1,
         "run_id": run_id,
@@ -116,7 +150,7 @@ def _build_findings(
         "endpoint": "DELETE /users/v1/{username}",
         "guardrail_check": "assert_disposable_target passed for all targets",
         "cases": cases,
-        "overall_verdict": execution_receipt.get("outcome", "INCONCLUSIVE"),
+        "overall_verdict": derived,
         "credential_or_response_bodies_exported": False,
     }
 

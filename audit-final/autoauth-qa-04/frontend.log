@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 /home/cuong/Dự án/Bảo mật web/Project/frontend
+
+
+ Test Files  6 passed (6)
+      Tests  55 passed (55)
+   Start at  16:28:01
+   Duration  4.54s (environment 50%, tests 39%, setup 6%, import 4%, transform 1%)
+

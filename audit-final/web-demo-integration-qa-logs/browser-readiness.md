@@ -1,0 +1,1 @@
+2026-11-13 ~20:50 Vietnam UTC+07. Mounted Browser status succeeded: t1 about:blank, loading=false, no dialog, no sign-in prompt. Old missing-Chrome blocker not reproduced by status. Navigation/render capability NOT_VERIFIED. App/lab not started; browser E2E NOT_RUN.

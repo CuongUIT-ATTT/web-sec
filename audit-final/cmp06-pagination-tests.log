@@ -1,0 +1,58 @@
+
+ RUN  v5.0.5 /home/cuong/Dự án/Bảo mật web/Project/frontend
+
+ ✓ src/Analyze.test.tsx > explains CONFIRMED_VIOLATION without inferring from HTTP 117ms
+ ✓ src/Analyze.test.tsx > explains POLICY_CONSISTENT_CASE without inferring from HTTP 20ms
+ ✓ src/Analyze.test.tsx > explains INVALID_TEST without inferring from HTTP 19ms
+ ✓ src/Analyze.test.tsx > explains BLOCKED_POLICY_CONFLICT without inferring from HTTP 17ms
+ ✓ src/Analyze.test.tsx > explains INSUFFICIENT_EVIDENCE without inferring from HTTP 17ms
+ ✓ src/Analyze.test.tsx > explains NOT_EVALUATED without inferring from HTTP 14ms
+ ✓ src/Analyze.test.tsx > renders v2 aliases and typed checks only 15ms
+ ✓ src/Analyze.test.tsx > does not invent missing evidence 7ms
+ ✓ src/Compare.test.tsx > reads persisted run only and displays unavailable metadata and methods 259ms
+ ✓ src/Compare.test.tsx > does not show a late response from a previous run 70ms
+ ✓ src/App.test.tsx > authorization testing workspace > requires an admin password before configuration is visible 612ms
+ ✓ src/Compare.test.tsx > rejects mismatched run and reports read failure without NOT_RUN fabrication 279ms
+ ✓ src/Compare.test.tsx > reports an empty run without inventing cases 65ms
+ ✓ src/Compare.test.tsx > uses only matching historical policy, binding=true 54ms
+ ✓ src/Compare.test.tsx > uses only matching historical policy, binding=false 39ms
+ ✓ src/Compare.test.tsx > renders schema 1 historical completed independently from current unexecuted 81ms
+ ✓ src/Compare.test.tsx > renders schema 2 historical completed independently from current unexecuted 80ms
+ ✓ src/App.test.tsx > authorization testing workspace > queues only the fixed external read-only workflow 258ms
+ ✓ src/Compare.test.tsx > never renders receipt bytes or unknown metadata 105ms
+ ✓ src/App.test.tsx > authorization testing workspace > prefills safe identity fields but never its bearer token 261ms
+ ✓ src/WebDemo.test.tsx > creates role policy with resource scope and identity XOR role 1120ms
+ ✓ src/Compare.test.tsx > ignores stale bundle and project responses 95ms
+ ✓ src/Compare.test.tsx > ignores a previous project's late inventory 15ms
+ ✓ src/Compare.test.tsx > shows inventory and detail errors without fabricating results 46ms
+ ✓ src/Compare.test.tsx > uses project-scoped GET inventory and detail endpoints 2ms
+ ✓ src/Compare.test.tsx > loads full inventory followed by a terminal page of 0 rows 249ms
+ ✓ src/WebDemo.test.tsx > preserves role/resource edit and switches exclusively to identity 291ms
+ ✓ src/Compare.test.tsx > loads full inventory followed by a terminal page of 1 rows 242ms
+ ✓ src/Compare.test.tsx > rejects the whole inventory when the next page fails 15ms
+ ✓ src/Compare.test.tsx > ignores a stale next-page resolve after switching project 96ms
+ ✓ src/Compare.test.tsx > ignores a stale next-page reject after switching project 95ms
+ ✓ src/WebDemo.test.tsx > renders resolved matrix fields from response 303ms
+ ✓ src/WebDemo.test.tsx > requests run-scoped findings, reports missing evidence and ignores stale other-run response 259ms
+ ✓ src/WebDemo.test.tsx > blocks duplicate batch queue while request is pending 191ms
+ ✓ src/WebDemo.test.tsx > blocks duplicate cancellation while request is pending 180ms
+ ✓ src/WebDemo.test.tsx > does not display previous-project results after project switch 320ms
+ ✓ src/WebDemo.test.tsx > does not publish pending findings after project switch 389ms
+ ✓ src/WebDemo.test.tsx > ignores late results errors after project switch 392ms
+ ✓ src/WebDemo.test.tsx > ignores late findings errors after project switch 336ms
+ ✓ src/WebDemo.test.tsx > keeps newest same-run request when older request rejects=false 296ms
+ ✓ src/WebDemo.test.tsx > keeps newest same-run request when older request rejects=true 323ms
+ ✓ src/WebDemo.test.tsx > keeps redacted resource ID out of edits unless a replacement is entered 358ms
+ ✓ src/WebDemo.test.tsx > shows and filters every case in a 3-account matrix 56ms
+ ✓ src/WebDemo.test.tsx > shows and filters every case in a 5-account matrix 51ms
+ ✓ src/WebDemo.test.tsx > renders batch cases from the selected batch preview without queueing 238ms
+ ✓ src/WebDemo.test.tsx > links persisted reproduction to the exact selected run and case 287ms
+ ✓ src/WebDemo.test.tsx > reports configured roles separately from account counts and web administration 162ms
+ ✓ src/WebDemo.test.tsx > shows matrix loading and error without queueing 306ms
+ ✓ src/WebDemo.test.tsx > keeps multi-operation keys and unknown policy conflicts visible 34ms
+
+ Test Files  4 passed (4)
+      Tests  49 passed (49)
+   Start at  23:58:55
+   Duration  8.63s (tests 50%, environment 41%, setup 4%, import 3%, transform 2%)
+

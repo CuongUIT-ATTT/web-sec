@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import create_engine, text
 
 from backend.app.persistence.database import create_session_factory
-from backend.app.persistence.upgrades import T18_MIGRATION_ID, T19_MIGRATION_ID, UpgradeError, inspect_run_result_case_keys
+from backend.app.persistence.upgrades import AUTOAUTH_MIGRATION_ID, T18_MIGRATION_ID, T19_MIGRATION_ID, UpgradeError, inspect_run_result_case_keys
 
 
 def test_clean_upgrade_creates_additive_ledger_and_stats(tmp_path: Path) -> None:
@@ -14,8 +14,8 @@ def test_clean_upgrade_creates_additive_ledger_and_stats(tmp_path: Path) -> None
     with engine.connect() as connection:
         tables = {row.name for row in connection.execute(text("SELECT name FROM sqlite_master WHERE type = 'table'"))}
         migrations = set(connection.execute(text("SELECT migration_id FROM schema_migrations")).scalars())
-    assert {"batch_case_claims", "run_execution_stats", "external_lab_jobs", "bridge_nonces", "schema_migrations"}.issubset(tables)
-    assert migrations == {T18_MIGRATION_ID, T19_MIGRATION_ID}
+    assert {"batch_case_claims", "run_execution_stats", "external_lab_jobs", "bridge_nonces", "schema_migrations", "project_authorization_revisions"}.issubset(tables)
+    assert migrations == {T18_MIGRATION_ID, T19_MIGRATION_ID, AUTOAUTH_MIGRATION_ID}
 
 
 def test_duplicate_legacy_keys_block_before_schema_mutation(tmp_path: Path) -> None:

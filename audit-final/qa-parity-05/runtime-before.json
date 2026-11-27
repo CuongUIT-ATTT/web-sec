@@ -1,0 +1,17 @@
+{
+  "Id": "4363c0ad1f84acc7ba5c0c3f84763e7938f78bdd7aeb6f91cf83579e0b022dc4",
+  "Image": "sha256:449951653ce9ba0acb37caf6cbc4048dec35de45f0ca6f3009df8ffb72cd5aae",
+  "State": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 8432,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-11-15T14:22:35.502610237Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  }
+}

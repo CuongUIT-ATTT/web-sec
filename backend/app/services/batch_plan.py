@@ -61,6 +61,11 @@ def build_batch_plan(
     the configured resource rows and makes the request budget explicit before a run
     can be queued.
     """
+    project_id = target.project_id
+    if any(item.project_id != project_id for collection in (identities, mappings, operations, resource_types) for item in collection):
+        raise BatchPlanError("Cấu hình batch phải thuộc cùng dự án.")
+    if len({(m.operation_id, m.resource_type_id) for m in mappings if m.selected}) != sum(m.selected for m in mappings):
+        raise BatchPlanError("Mapping batch trùng lặp.")
     ordered_identities = tuple(sorted(identities, key=lambda item: item.id))
     if not ordered_identities:
         raise BatchPlanError("Cần ít nhất một danh tính đã cấu hình để chạy batch.")

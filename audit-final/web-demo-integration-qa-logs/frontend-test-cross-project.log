@@ -1,0 +1,30 @@
+
+ RUN  v5.0.5 /home/cuong/Dự án/Bảo mật web/Project/frontend
+
+ ❯ src/WebDemo.test.tsx (7 tests | 1 failed) 2010ms
+   × does not display previous-project results after project switch 280ms
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 9 passed (10)
+   Start at  20:51:12
+   Duration  4.20s (environment 47%, tests 44%, setup 4%, import 3%, transform 3%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/WebDemo.test.tsx > does not display previous-project results after project switch
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <td>
+  previous-project-case
+</td> instead
+ ❯ src/WebDemo.test.tsx:74:59
+     72|   await screen.findAllByRole("option", { name: "Owner fixture" });
+     73|   await act(async () => pending.resolve([result("previous-project-case…
+     74|   expect(screen.queryByText("previous-project-case")).not.toBeInTheDoc…
+       |                                                           ^
+     75| });
+     76|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

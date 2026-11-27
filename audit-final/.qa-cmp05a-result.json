@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-11-15T23:03:52.336691+07:00",
+  "python": "3.14.8",
+  "pytest": "9.2.0",
+  "exits": {
+    "importer": 0,
+    "case_manifest": 0,
+    "observations": 0,
+    "metrics": 0,
+    "exports": 0
+  },
+  "before": {
+    "tools/authorization-lab/src/authz_lab/evaluation/importer.py": "e3a3b34aaf6c4dce468d43a699b4a8ca3614fc735125cc2efa9c26e89a34eb97",
+    "tools/authorization-lab/src/authz_lab/evaluation/case_manifest.py": "38fb21fecc9b6a40dbc558a38b0f9e99956e76dfc1701903de0d638b9d8f9fb3",
+    "tools/authorization-lab/src/authz_lab/evaluation/observations.py": "72cda5b6d69603672392ef913382e3920ddf7213d5fb9f9432263f17823bcf69",
+    "tools/authorization-lab/src/authz_lab/evaluation/metrics.py": "8993b5d23ed004f60ceea8807d744adb6cf32cc273a4cc31af785d7f5b687642",
+    "tools/authorization-lab/src/authz_lab/evaluation/exports.py": "ec4b03631399a6db3810e0261eb0c51a806cbaf5e04c0480ea313f1cf9145b1b",
+    "tools/authorization-lab/tests/evaluation/test_importer.py": "49d5a4c8fc1f47ed48c7edc8949dcd05dfd177809d53285cfa87945a0720f3d4",
+    "tools/authorization-lab/tests/evaluation/test_case_manifest.py": "be03ad6c3a672c1c606067c67d6a0942870598b39f77db54854116c14368c5ea",
+    "tools/authorization-lab/tests/evaluation/test_observations.py": "1228e6dbebeb01d13a39a910d954aefe464a9744f4d9fe82ce5ba237671158ee",
+    "tools/authorization-lab/tests/evaluation/test_metrics.py": "4b4a7d4c1cb56eb374c35be5ef1ccd53ee99d9a7bac8121740f1976c1e12b58b",
+    "tools/authorization-lab/tests/evaluation/test_exports.py": "1d09b1710d8d9007bdbc1b5a6f58382b041d6931a615d06eef38f6e66a0cc795",
+    "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f",
+    "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+    "tools/authorization-lab/src/authz_lab/fixtures/manual_sample_cases.json": "0ece045d34599487bfbac175e49efc3afce8f2beda4f34f67c41d39817af6eca"
+  },
+  "after": {
+    "tools/authorization-lab/src/authz_lab/evaluation/importer.py": "e3a3b34aaf6c4dce468d43a699b4a8ca3614fc735125cc2efa9c26e89a34eb97",
+    "tools/authorization-lab/src/authz_lab/evaluation/case_manifest.py": "38fb21fecc9b6a40dbc558a38b0f9e99956e76dfc1701903de0d638b9d8f9fb3",
+    "tools/authorization-lab/src/authz_lab/evaluation/observations.py": "72cda5b6d69603672392ef913382e3920ddf7213d5fb9f9432263f17823bcf69",
+    "tools/authorization-lab/src/authz_lab/evaluation/metrics.py": "8993b5d23ed004f60ceea8807d744adb6cf32cc273a4cc31af785d7f5b687642",
+    "tools/authorization-lab/src/authz_lab/evaluation/exports.py": "ec4b03631399a6db3810e0261eb0c51a806cbaf5e04c0480ea313f1cf9145b1b",
+    "tools/authorization-lab/tests/evaluation/test_importer.py": "49d5a4c8fc1f47ed48c7edc8949dcd05dfd177809d53285cfa87945a0720f3d4",
+    "tools/authorization-lab/tests/evaluation/test_case_manifest.py": "be03ad6c3a672c1c606067c67d6a0942870598b39f77db54854116c14368c5ea",
+    "tools/authorization-lab/tests/evaluation/test_observations.py": "1228e6dbebeb01d13a39a910d954aefe464a9744f4d9fe82ce5ba237671158ee",
+    "tools/authorization-lab/tests/evaluation/test_metrics.py": "4b4a7d4c1cb56eb374c35be5ef1ccd53ee99d9a7bac8121740f1976c1e12b58b",
+    "tools/authorization-lab/tests/evaluation/test_exports.py": "1d09b1710d8d9007bdbc1b5a6f58382b041d6931a615d06eef38f6e66a0cc795",
+    "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f",
+    "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+    "tools/authorization-lab/src/authz_lab/fixtures/manual_sample_cases.json": "0ece045d34599487bfbac175e49efc3afce8f2beda4f34f67c41d39817af6eca"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "status": "PLANNED_NOT_EXECUTED",
+  "head": "bdbba9933ca057cb2247c3a1de9b3ee239c452bd",
+  "cohort_revision": "sha256:0120305688bcb028091ff4274fad0b38e58a17ba9289fa8139977218dff802bc",
+  "case_count": 13,
+  "candidate_cells": 15,
+  "extended_matrix_cells": 25,
+  "fixture_bundle_sha256": "a02f42b62ba6e6efa08cff2701c0fef3b62722770c0fa1bba1573d3a0465ee37",
+  "fixture_bindings": {
+    "a5dd2b7a74dcb7f699123113573cfed7cb8ae888b69a6e05ead5f5fadb9d6836": {
+      "bundle_sha256": "a02f42b62ba6e6efa08cff2701c0fef3b62722770c0fa1bba1573d3a0465ee37",
+      "fixture_slot": 0,
+      "path": "/books/v1/week1-userA-book"
+    },
+    "1253e46b8fe72316a81aa77fcce06f8e78d432973a35b4c93710b6c086e45821": {
+      "bundle_sha256": "a02f42b62ba6e6efa08cff2701c0fef3b62722770c0fa1bba1573d3a0465ee37",
+      "fixture_slot": 1,
+      "path": "/books/v1/week1-userB-book"
+    },
+    "47dd329c39c8933de14131a62b63d23e6d33c1d2dcbc836532798fe4b0d423dc": {
+      "bundle_sha256": "a02f42b62ba6e6efa08cff2701c0fef3b62722770c0fa1bba1573d3a0465ee37",
+      "fixture_slot": 2,
+      "path": "/users/v1/userA"
+    },
+    "9dafbb7e0686613fb634d4ac697b909481d6003c8e797e0ea91104735234723a": {
+      "bundle_sha256": "a02f42b62ba6e6efa08cff2701c0fef3b62722770c0fa1bba1573d3a0465ee37",
+      "fixture_slot": 3,
+      "path": "/users/v1/userB"
+    },
+    "fefb01787de6167104e4e45f3e979212a4fbd63ff448aad4b0e5d3e674546ce6": {
+      "bundle_sha256": "a02f42b62ba6e6efa08cff2701c0fef3b62722770c0fa1bba1573d3a0465ee37",
+      "fixture_slot": 4,
+      "path": "/me"
+    }
+  },
+  "source_sha256": {
+    "tools/authorization-lab/src/authz_lab/fixtures/ownership.csv": "a799ce97a89a89acb03b543b9a33def3f869c4bb3835e6810c197e14ab41c72f",
+    "tools/authorization-lab/src/authz_lab/fixtures/vampi_spec.json": "dfff32264cc1eaf1714a18fe063399664d726d70b437866904e4d8f2f075810b",
+    "tools/authorization-lab/src/authz_lab/fixtures/manual_sample_cases.json": "0ece045d34599487bfbac175e49efc3afce8f2beda4f34f67c41d39817af6eca",
+    "tools/authorization-lab/src/authz_lab/fixtures/zap/allowlist-v2.json": "6d175ba50ed4f8d80f9cc3ee0ebb06e15d432c75e567671ab49b25b830a9a33a",
+    "tools/authorization-lab/src/authz_lab/evaluation/case_manifest.py": "38fb21fecc9b6a40dbc558a38b0f9e99956e76dfc1701903de0d638b9d8f9fb3",
+    "tools/authorization-lab/src/authz_lab/zap/context.py": "d66214d71c8c02978cc2c1ee5f60e24f06761467a7ca05196f988583cc6a98ea",
+    "tools/authorization-lab/src/authz_lab/zap/runner.py": "0145faf404f285cea3120681734e6f19f6d0e664934b745cf2e8737c091ab838",
+    "audit-final/research-workflow-cmp06-pagination-qa.md": "b7fc0de333537a3978616a0c87886e79b5672eb21afd0c2bcdca7e841b6db241",
+    "audit-final/web-demo-e2e-authorized-lab.md": "701e3c4c627dfee36d34617023214f56292e5ac836d79a61cbc611306cb3c6bf",
+    "audit-final/research-workflow-observations-approval-independent-qa.md": "b844192de8e405cf056138f2c01bafc87bdf8e53099dbe78ab7cc9bd01e978df",
+    "audit-final/research-workflow-bfla-attestation-independent-qa.md": "a842a7dae1dc2259f803ec49af2868eabee1077e41b6b0a4b3cbd9c414d02e1f",
+    "audit-final/research-workflow-comparison-receipt-contract.md": "cb18c9103583bff17f6c41339cffb0325c12115edb022341af8c3c58d0f8afae"
+  },
+  "roles": [
+    "userA",
+    "userB",
+    "admin"
+  ],
+  "extended_roles": [
+    "userA",
+    "userB",
+    "admin",
+    "userC",
+    "admin2"
+  ],
+  "alias_registry": {
+    "userA": "actor-c835b0e7f7913688d7e56e507dd671a6",
+    "userB": "actor-aaddaba48ba239bb793cf68eae6e388b",
+    "admin": "actor-5d3a01468d04f0b870143383352ac8b8",
+    "userC": "actor-c64a01a98a980bd2112f7448fdb4b6a0",
+    "admin2": "actor-4b6f9de4187b5d58bb604253d0d4b1b2"
+  },
+  "owner_alias_registry": {
+    "userA": "owner-d2ad9b4d09090f68c37ca88002d553ed",
+    "userB": "owner-69532e1b346caabe80b16aae3069440f"
+  },
+  "alias_note": "Public profile actor aliases are scenario-scoped, mapped by role to same planned principal; review upstream before execution.",
+  "policy": "cmp07_read_policy/draft-r1",
+  "truth_review": "PENDING_REVIEW",
+  "target_proposal": "http://127.0.0.1:5000",
+  "zap_listener_proposal": "http://127.0.0.1:8080",
+  "historical_e2e_target": "100.106.64.21:5003",
+  "authorization": "OFFLINE_DOCUMENTS_ONLY",
+  "metrics": null,
+  "timing": null
+}

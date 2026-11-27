@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from authz_lab.evaluation.comparison import (
@@ -14,7 +15,14 @@ from authz_lab.evaluation.comparison import (
 from authz_lab.evaluation.timing import TimingEvidence
 
 
-class ParseManualWorksheetTests(unittest.TestCase):
+class OfflineTests(unittest.TestCase):
+    def setUp(self):
+        blocker = patch("socket.socket.connect", side_effect=AssertionError("network blocked"))
+        blocker.start()
+        self.addCleanup(blocker.stop)
+
+
+class ParseManualWorksheetTests(OfflineTests):
     """Worksheet parser must never auto-fill observation data."""
 
     def test_returns_pending_when_file_missing(self):
@@ -56,7 +64,7 @@ class ParseManualWorksheetTests(unittest.TestCase):
         self.assertIsNone(result["elapsed_minutes"])
 
 
-class BuildWeek4ComparisonTests(unittest.TestCase):
+class BuildWeek4ComparisonTests(OfflineTests):
     """Comparison builder must preserve honest statuses."""
 
     def test_preserves_pending_manual_and_not_run_zap(self):
@@ -168,7 +176,7 @@ class BuildWeek4ComparisonTests(unittest.TestCase):
             timing_file = root / "week3_script_timing.json"
             verif_file = root / "week3_manual_verification.json"
             timing_file.write_text(
-                json.dumps({"elapsed_ms": 5012.3, "case_count": 32}),
+                json.dumps({"status": "MEASURED", "elapsed_ms": 5012.3, "case_count": 32}),
                 encoding="utf-8",
             )
             verif_file.write_text(
@@ -194,7 +202,81 @@ class BuildWeek4ComparisonTests(unittest.TestCase):
         self.assertEqual(comparison["custom_script"]["policy_dependent_admin_access"], 5)
 
 
-class WriteComparisonTests(unittest.TestCase):
+    def test_absence_never_invents_counts_or_disclosure(self):
+        result = build_final_comparison(None, None, manual_worksheet_path="/missing")
+        for key in ("case_count", "confirmed_user_to_user_bola",
+                    "confirmed_user_to_admin_bola", "policy_dependent_admin_access",
+                    "hidden_200_data_exposure"):
+            self.assertIsNone(result["custom_script"][key])
+        self.assertIsNone(result["comparison_scope"]["script_total_cases"])
+
+    def test_functional_evidence_survives_missing_timing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "verification.json"
+            source.write_text(json.dumps([{"outcome": "CONFIRMED_USER_TO_USER_BOLA"}]))
+            result = build_final_comparison(None, None, verification_path=source)
+        self.assertEqual(result["custom_script"]["confirmed_user_to_user_bola"], 1)
+        self.assertEqual(result["custom_script"]["functional_status"], "AVAILABLE")
+        self.assertEqual(result["custom_script"]["status"], "TIMING_NOT_AVAILABLE")
+
+    def test_malformed_verification_remains_unknown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "verification.json"
+            for content in ("{", "{}", "[]", '[{}]', '[null]'):
+                source.write_text(content)
+                result = build_final_comparison(None, None, verification_path=source)
+                self.assertIsNone(result["custom_script"]["confirmed_user_to_user_bola"])
+
+    def test_direct_and_legacy_timing_cannot_bypass_validation(self):
+        for elapsed in (float("nan"), float("inf"), -1, True):
+            with self.subTest(elapsed=elapsed), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory) / "timing.json"
+                source.write_text(json.dumps({"status": "MEASURED", "elapsed_ms": elapsed, "case_count": 12}))
+                for kwargs in ({"script_timing_path": source}, {"timing_evidence": TimingEvidence("AVAILABLE", source, elapsed, 12)}):
+                    script = build_final_comparison(None, None, **kwargs)["custom_script"]
+                    self.assertEqual(script["status"], "TIMING_NOT_AVAILABLE")
+                    self.assertIsNone(script["elapsed_ms"])
+                    self.assertIsNone(script["case_count"])
+
+    def test_invalid_completion_payloads_fail_closed(self):
+        for payload in ({}, {"status": "FAILED"}, {"status": "COMPLETED"},
+                        {"status": "COMPLETED", "scan_result_count": True, "unauthorized_access_findings": []}):
+            self.assertEqual(build_final_comparison(None, payload)["owasp_zap"]["status"], "INVALID")
+        for payload in ({}, {"status": "NOT_RUN"}, {"overall_verdict": "DENIED_CONTROL", "cases": []},
+                        {"overall_verdict": "invented", "cases": [{"id": "x", "verdict": "DENIED"}]}):
+            self.assertEqual(build_final_comparison(payload, None)["bfla_disposable"]["status"], "INVALID")
+
+    def test_bfla_contradictory_verdict_and_duplicate_cases_are_invalid(self):
+        cases = [{"id": "x", "verdict": "BFLA_CONFIRMED"}]
+        for payload in (
+            {"overall_verdict": "DENIED_CONTROL", "cases": cases},
+            {"overall_verdict": "BFLA_CONFIRMED_DESTRUCTIVE", "cases": cases * 2},
+            {"status": "NOT_RUN", "overall_verdict": "BFLA_CONFIRMED_DESTRUCTIVE", "cases": cases},
+        ):
+            self.assertEqual(build_final_comparison(payload, None)["bfla_disposable"]["status"], "INVALID")
+
+    def test_adjacent_search_never_uses_parent_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "week3_manual_verification.json").write_text('[{"outcome": "CONFIRMED_USER_TO_USER_BOLA"}]')
+            child = root / "other-run"
+            child.mkdir()
+            timing = TimingEvidence("AVAILABLE", child / "timing.json", 10, 2)
+            result = build_final_comparison(None, None, timing_evidence=timing)
+            self.assertIsNone(result["custom_script"]["confirmed_user_to_user_bola"])
+
+    def test_manual_invalid_timing_preserves_functional_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "worksheet.md"
+            for timing in ("nan", "inf", "-1"):
+                source.write_text("\n".join(f"| M-{i:02d} | GET /a | a | deny | 403 | Denied | {timing} |" for i in range(1, 8)))
+                result = _parse_manual_worksheet(source)
+                self.assertIsNone(result["elapsed_minutes"])
+                self.assertEqual(result["status"], "COMPLETED_NO_TIMING")
+                self.assertEqual(result["confirmed_findings"], 0)
+
+
+class WriteComparisonTests(OfflineTests):
     """Written comparison must pass redaction checks."""
 
     def test_writes_valid_json(self):

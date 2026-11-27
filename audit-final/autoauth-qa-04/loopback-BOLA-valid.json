@@ -1,0 +1,103 @@
+{
+  "kind": "BOLA",
+  "fixture": "isolated-numeric-loopback",
+  "verification_failure": null,
+  "run_id": 2,
+  "case_ids": [
+    "autoauth:v1:project:1:operation:1:BOLA:resource:1:actor:1",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:1:actor:2",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:1:actor:3",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:2:actor:1",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:2:actor:3",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:3:actor:1",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:3:actor:2",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:3:actor:3",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:4:actor:1",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:4:actor:2",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:4:actor:3",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:5:actor:1",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:5:actor:3",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:6:actor:1",
+    "autoauth:v1:project:1:operation:1:BOLA:resource:6:actor:3"
+  ],
+  "policy_revision": "32502379722f4d1e52d2e5200aa3fece2ba14bc865ef9938ede096a2fdc22e2c",
+  "planned": 24,
+  "server_received": 24,
+  "conclusions": [
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:1:actor:1",
+      "status": 403,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:1:actor:2",
+      "status": 200,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:1:actor:3",
+      "status": 200,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:2:actor:1",
+      "status": 403,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:2:actor:3",
+      "status": 200,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:3:actor:1",
+      "status": 403,
+      "conclusion": "CONFIRMED_VIOLATION"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:3:actor:2",
+      "status": 200,
+      "conclusion": "POLICY_CONSISTENT_CASE"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:3:actor:3",
+      "status": 200,
+      "conclusion": "POLICY_CONSISTENT_CASE"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:4:actor:1",
+      "status": 403,
+      "conclusion": "CONFIRMED_VIOLATION"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:4:actor:2",
+      "status": 200,
+      "conclusion": "POLICY_CONSISTENT_CASE"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:4:actor:3",
+      "status": 200,
+      "conclusion": "POLICY_CONSISTENT_CASE"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:5:actor:1",
+      "status": 403,
+      "conclusion": "CONFIRMED_VIOLATION"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:5:actor:3",
+      "status": 200,
+      "conclusion": "POLICY_CONSISTENT_CASE"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:6:actor:1",
+      "status": 403,
+      "conclusion": "CONFIRMED_VIOLATION"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:1:BOLA:resource:6:actor:3",
+      "status": 200,
+      "conclusion": "POLICY_CONSISTENT_CASE"
+    }
+  ]
+}

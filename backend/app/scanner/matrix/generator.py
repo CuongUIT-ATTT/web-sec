@@ -26,6 +26,7 @@ def generate_cases(
     actor_identity_ids: Iterable[int],
     resolutions: dict[int, PolicyResolution],
     verified_identity_ids: set[int],
+    operation_id: int | None = None,
 ) -> list[MatrixCase]:
     """Materialize only configured identities/resources; verification affects warnings, not generation."""
     cases: list[MatrixCase] = []
@@ -39,7 +40,7 @@ def generate_cases(
         if resolution.status == PolicyResolutionStatus.NO_MATCH:
             warnings.append("policy.no_resolved_rule")
         cases.append(MatrixCase(
-            case_key=f"resource:{resource_id}:actor:{actor_identity_id}",
+            case_key=(f"operation:{operation_id}:" if operation_id is not None else "") + f"resource:{resource_id}:actor:{actor_identity_id}",
             control_type="OWNER_CONTROL" if actor_identity_id == owner_identity_id else "CROSS_IDENTITY",
             actor_identity_id=actor_identity_id,
             resource_id=resource_id,

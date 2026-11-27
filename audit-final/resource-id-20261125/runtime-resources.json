@@ -1,0 +1,38 @@
+[
+  {
+    "project_id": 1,
+    "project": "T18 SSH GET Lab v1",
+    "internal_id": 1,
+    "external_id": "book-A1",
+    "resource_type": "ssh-book",
+    "owner": "userA",
+    "path_parameter": "book_id"
+  },
+  {
+    "project_id": 1,
+    "project": "T18 SSH GET Lab v1",
+    "internal_id": 2,
+    "external_id": "book-A2",
+    "resource_type": "ssh-book",
+    "owner": "userA",
+    "path_parameter": "book_id"
+  },
+  {
+    "project_id": 1,
+    "project": "T18 SSH GET Lab v1",
+    "internal_id": 3,
+    "external_id": "book-B1",
+    "resource_type": "ssh-book",
+    "owner": "userB",
+    "path_parameter": "book_id"
+  },
+  {
+    "project_id": 1,
+    "project": "T18 SSH GET Lab v1",
+    "internal_id": 4,
+    "external_id": "book-B2",
+    "resource_type": "ssh-book",
+    "owner": "userB",
+    "path_parameter": "book_id"
+  }
+]

@@ -58,6 +58,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run Write-BOLA vs HTTP-204 False Positive and Mass Assignment checks on the disposable instance.",
     )
     _add_run_arguments(extended_parser)
+    for stage_parser in (execute_parser, extended_parser):
+        stage_parser.add_argument("--approval", type=Path, required=True)
+        stage_parser.add_argument("--approval-digest", required=True)
     teardown_parser = subcommands.add_parser("teardown", help="Destroy only the matching disposable Compose project and volume.")
     _add_run_arguments(teardown_parser, include_compose=True)
     return parser
@@ -81,11 +84,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Prepared only the manifest-bound disposable BFLA fixtures from {path}.")
             return 0
         if args.command == "execute":
-            result = execute(args.run_id, project, run_dir, args.results_root)
+            result = execute(args.run_id, project, run_dir, args.results_root, approval=args.approval, approval_digest=args.approval_digest)
             print(f"Disposable BFLA execution completed with outcome {result['outcome']}.")
             return 10 if result["outcome"] == "BFLA_CONFIRMED_DESTRUCTIVE" else 0 if result["outcome"] == "DENIED_CONTROL" else 2
         if args.command == "execute-extended":
-            result = execute_extended(args.run_id, project, run_dir, args.results_root)
+            result = execute_extended(args.run_id, project, run_dir, args.results_root, approval=args.approval, approval_digest=args.approval_digest)
             print(f"Disposable extended state-changing execution completed for run {result['run_id']}.")
             return 0
         receipt = teardown(args.run_id, project, run_dir, args.compose_file, args.results_root)

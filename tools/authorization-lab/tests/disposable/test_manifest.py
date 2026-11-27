@@ -61,6 +61,14 @@ class DisposableBflaManifestTests(unittest.TestCase):
             with self.assertRaises(BflaManifestError):
                 validate_run_directory(linked, "b1c2d3e4")
 
+    def test_v2_scope_and_cap_tampering_rejected(self):
+        for field, value in (("request_cap", 100), ("operations", [])):
+            with self.subTest(field=field):
+                manifest = build_manifest(self.run_id)
+                manifest["execution_scopes"]["execute"][field] = value
+                with self.assertRaises(BflaManifestError):
+                    validate_manifest(manifest)
+
     def test_rejects_manifest_mutation(self):
         manifest = build_manifest(self.run_id)
         manifest["destructive_targets"][0]["path"] = "/users/v1/another-user"

@@ -22,6 +22,7 @@ class Settings:
     allowed_ports: frozenset[int]
     max_response_bytes: int
     default_timeout_seconds: float
+    demo_target_url: str = ""
     secure_cookies: bool = False
     external_lab_bridge_enabled: bool = False
     external_lab_bridge_socket_path: Path | None = None
@@ -66,6 +67,7 @@ class Settings:
             allowed_ports=ports,
             max_response_bytes=int(os.environ.get("AUTHZ_MAX_RESPONSE_BYTES", "32768")),
             default_timeout_seconds=float(os.environ.get("AUTHZ_DEFAULT_TIMEOUT_SECONDS", "5")),
+            demo_target_url=os.environ.get("AUTHZ_DEMO_TARGET_URL", ""),
             secure_cookies=os.environ.get("AUTHZ_SECURE_COOKIES", "false").lower() == "true",
             external_lab_bridge_enabled=bridge_enabled,
             external_lab_bridge_socket_path=Path(bridge_socket_text) if bridge_socket_text else None,

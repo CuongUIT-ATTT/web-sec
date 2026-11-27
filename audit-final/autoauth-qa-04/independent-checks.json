@@ -1,0 +1,41 @@
+{
+  "browser": {
+    "database": "/tmp/autoauth-qa-04-qx5ut1dl/isolated.sqlite",
+    "runs": [
+      {
+        "id": 1,
+        "status": "COMPLETED",
+        "snapshot_sha256": "61df598a1f946ee6bff77c5772e2fe82884b5d5a160856af8c61ad193045223b"
+      },
+      {
+        "id": 2,
+        "status": "COMPLETED",
+        "snapshot_sha256": "04284e159976b5a643fc694dbca11c55a64e2798e82112e2241d357d564be66a"
+      }
+    ],
+    "legacy_sentinel_unchanged": true
+  },
+  "cancel": {
+    "database": "/tmp/autoauth-qa-04-bn4_1j2h/isolated.sqlite",
+    "runs": [
+      {
+        "id": 1,
+        "status": "COMPLETED",
+        "snapshot_sha256": "61df598a1f946ee6bff77c5772e2fe82884b5d5a160856af8c61ad193045223b"
+      },
+      {
+        "id": 2,
+        "status": "CANCELLED",
+        "snapshot_sha256": "33d6bd5fed61407b028fa8e98bc98cc08cb2dadf5cf0bf7925f46db67f715c18"
+      }
+    ],
+    "legacy_sentinel_unchanged": true
+  },
+  "redaction": {
+    "protected_value_absent": true,
+    "bearer_value_absent": true,
+    "scope": "public results/runs/visible comparison DTO only"
+  },
+  "source_unchanged": true,
+  "finished_utc": "2026-11-16T09:31:29.018361+00:00"
+}

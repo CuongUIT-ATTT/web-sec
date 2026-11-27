@@ -1,0 +1,17 @@
+bdbba9933ca057cb2247c3a1de9b3ee239c452bd
+ M backend/app/api/workflow_routes.py
+ M backend/app/api/workflow_schemas.py
+ M backend/app/scanner/classification/evaluator.py
+ M backend/app/workers/runner.py
+ M frontend/src/App.tsx
+ M frontend/src/api.ts
+ M frontend/src/styles.css
+?? T18-context-snapshot.zip
+?? audit-final/
+?? backend/tests/test_web_demo_contracts.py
+?? backend/tests/test_web_demo_evidence.py
+?? context-snapshot/
+?? frontend/src/WebDemo.test.tsx
+v26.12.1
+12.2.1
+2026-11-13T20:54:21+07:00

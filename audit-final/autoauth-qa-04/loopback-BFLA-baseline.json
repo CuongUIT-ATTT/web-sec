@@ -1,0 +1,31 @@
+{
+  "kind": "BFLA",
+  "fixture": "isolated-numeric-loopback",
+  "verification_failure": "baseline",
+  "run_id": 2,
+  "case_ids": [
+    "autoauth:v1:project:1:operation:2:BFLA:resource:-:actor:1",
+    "autoauth:v1:project:1:operation:2:BFLA:resource:-:actor:2",
+    "autoauth:v1:project:1:operation:2:BFLA:resource:-:actor:3"
+  ],
+  "policy_revision": "32502379722f4d1e52d2e5200aa3fece2ba14bc865ef9938ede096a2fdc22e2c",
+  "planned": 7,
+  "server_received": 7,
+  "conclusions": [
+    {
+      "case_id": "autoauth:v1:project:1:operation:2:BFLA:resource:-:actor:1",
+      "status": 403,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:2:BFLA:resource:-:actor:2",
+      "status": 200,
+      "conclusion": "INVALID_TEST"
+    },
+    {
+      "case_id": "autoauth:v1:project:1:operation:2:BFLA:resource:-:actor:3",
+      "status": 200,
+      "conclusion": "INVALID_TEST"
+    }
+  ]
+}

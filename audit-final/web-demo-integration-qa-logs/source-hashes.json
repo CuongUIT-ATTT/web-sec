@@ -1,0 +1,12 @@
+{
+  "frontend/src/App.tsx": "ecd5922aafe4b581f3bb18c35ee9e9fc67a82f41209f2881f8f553c563196e90",
+  "frontend/src/api.ts": "281c55482c987353fd1cad84c8508378098cfa49a82573a933fb3212c1bbf40d",
+  "frontend/src/styles.css": "ace4262c47c7b2bc62e1d357028d5b49d679dcb3361569c88b78fe04080ceb16",
+  "backend/app/api/workflow_routes.py": "de0ffa2b7449078d1cf99c1e6a5652ced9bbae2e6fd1861389ba94a99bb8c06a",
+  "backend/app/api/workflow_schemas.py": "1d906c15c0ef7e960949037f154658124364539085d6a10cf4055e059dba0b7e",
+  "backend/app/scanner/classification/evaluator.py": "7d64a9cbc671492416755d3aa6d229a9e293d94c312a20e71f3f257c8b0d602a",
+  "backend/app/workers/runner.py": "070c526c4d5fb75257ebd935bcdc12e2a02a7eb9e4bb7c49598f7e1933bd318e",
+  "frontend/src/WebDemo.test.tsx": "14a87183c3cd7ecd525064431e6ed681e2dd4a7e3fa0408cb33a3de71ae0aa02",
+  "backend/tests/test_web_demo_contracts.py": "2ff8cf799df0f387da28e4c3a1be797d2bbe78ea16c2dfabc788680a35fd07e6",
+  "backend/tests/test_web_demo_evidence.py": "c5b2213bfa72911dae8ab8202a73ddb47567b37a0799a0b504314310df1266d6"
+}

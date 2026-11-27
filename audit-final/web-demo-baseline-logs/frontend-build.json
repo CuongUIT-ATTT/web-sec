@@ -1,0 +1,17 @@
+{
+  "name": "frontend-build",
+  "command": [
+    "npm",
+    "run",
+    "build",
+    "--",
+    "--outDir",
+    "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project/audit-final/web-demo-baseline-logs/frontend-dist"
+  ],
+  "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project/frontend",
+  "start_utc": "2026-11-13T13:32:45.453953+00:00",
+  "end_utc": "2026-11-13T13:32:46.881911+00:00",
+  "exit_code": 0,
+  "status": "PASS",
+  "log": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project/audit-final/web-demo-baseline-logs/frontend-build.log"
+}

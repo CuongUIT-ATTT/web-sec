@@ -1,0 +1,307 @@
+{
+  "time": "2026-11-15T22:04:08.261622+07:00",
+  "container": {
+    "Id": "23a084b72c212b81a523543a251f4278d0201fbb554ad27a095e13639841da6c",
+    "Image": "sha256:8bcd2719dfc8f353c387fb9b05eb7ee25a23e431ed908aade6b89b64594fe9a0",
+    "Mounts": []
+  },
+  "state": {
+    "Status": "running",
+    "Running": true,
+    "Restarting": false,
+    "ExitCode": 0
+  },
+  "isolation": {
+    "ReadonlyRootfs": true,
+    "CapDrop": [
+      "ALL"
+    ],
+    "SecurityOpt": [
+      "no-new-privileges:true"
+    ],
+    "PortBindings": {
+      "8000/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "18080"
+        }
+      ]
+    },
+    "Tmpfs": {
+      "/qa-state": "uid=65534,gid=65534,mode=0700",
+      "/tmp": "uid=65534,gid=65534,mode=0700"
+    }
+  },
+  "networks": {
+    "t18-qa-parity-05_qa_only": true
+  },
+  "health": {
+    "status": "ok"
+  },
+  "login_status": 200,
+  "/api/projects/1/identities": {
+    "count": 3
+  },
+  "/api/runs/1/results": {
+    "count": 6
+  },
+  "/api/projects/1/runs/1/comparison": {
+    "count": 6
+  },
+  "mutation_status": 403,
+  "assets": [
+    {
+      "path": "/assets/index-BSZgHv66.js",
+      "served": "9a255b8e4f98340579c3e3b3ed1677c060122c37a4fe899d5e31ecef0b5e3b69",
+      "image": "9a255b8e4f98340579c3e3b3ed1677c060122c37a4fe899d5e31ecef0b5e3b69",
+      "workspace": "9a255b8e4f98340579c3e3b3ed1677c060122c37a4fe899d5e31ecef0b5e3b69",
+      "parity": true
+    },
+    {
+      "path": "/assets/index-CwTufpIY.css",
+      "served": "8e65978fa0644f64fb1c056c39058852c0a85100d12fb03b44496a35ec849591",
+      "image": "8e65978fa0644f64fb1c056c39058852c0a85100d12fb03b44496a35ec849591",
+      "workspace": "8e65978fa0644f64fb1c056c39058852c0a85100d12fb03b44496a35ec849591",
+      "parity": true
+    }
+  ],
+  "sources": [
+    {
+      "path": "backend/app/__init__.py",
+      "sha256": "47f6b79ee3964ecea3ae7dab1374f20d275ca69b8ffaa8b40eea0cd1b5a11835",
+      "parity": true
+    },
+    {
+      "path": "backend/app/server.py",
+      "sha256": "5a096fdda8a87dd16d30a277eeb5ca14151f3db7e29773f43996c29b1b682a93",
+      "parity": true
+    },
+    {
+      "path": "backend/app/main.py",
+      "sha256": "3240afd5b1c38b925eb888547a97e42f24d8da4c250515ae34a80734fa986975",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/__init__.py",
+      "sha256": "6f836c56acb659d5396543e39cfdc30eb9fb40d1423a5444fcfe5bf4025201c9",
+      "parity": true
+    },
+    {
+      "path": "backend/app/persistence/models.py",
+      "sha256": "f5e5a332949659d5bc542099a0493eaa78832a7ac30ea63389161c112972a4ae",
+      "parity": true
+    },
+    {
+      "path": "backend/app/persistence/__init__.py",
+      "sha256": "69b8d00c9486177c981bea24408049f16272f9095ed805f7bf4215890438d35d",
+      "parity": true
+    },
+    {
+      "path": "backend/app/persistence/database.py",
+      "sha256": "41f475ee4769fb7f0241fede6c8b97254d230b261be3c63ae2571cd593e81bfd",
+      "parity": true
+    },
+    {
+      "path": "backend/app/persistence/upgrades.py",
+      "sha256": "5b11f3df7686be13fb922747f733655d9433429e0593228b9ddd3fcff8bc3a6c",
+      "parity": true
+    },
+    {
+      "path": "backend/app/workers/service.py",
+      "sha256": "f8c54561f2f1de480c46672f67abc1e7811e9a25cd0b3b61eb513458a86242f8",
+      "parity": true
+    },
+    {
+      "path": "backend/app/workers/__init__.py",
+      "sha256": "7445046cbd82456dea97aca70abdc81793f4ca27d9b53238aace837e1c20820f",
+      "parity": true
+    },
+    {
+      "path": "backend/app/workers/runner.py",
+      "sha256": "0770cee76b7ec42e12532fcd3019c2a4dc7b257842d08941fa039517f9c49f0b",
+      "parity": true
+    },
+    {
+      "path": "backend/app/workers/queue.py",
+      "sha256": "44648570ea1f818a4a17e1de249353de986a10f85309a1be493b016a090b4032",
+      "parity": true
+    },
+    {
+      "path": "backend/app/external_lab/service.py",
+      "sha256": "68a116354d2b6edb1a1f6f79d9c17c9a91964838f6d3356933009f09e14e9172",
+      "parity": true
+    },
+    {
+      "path": "backend/app/external_lab/dispatcher.py",
+      "sha256": "de23590e6023791891c2563647d00e3ad69567333a6e317570509a2c1f477ce9",
+      "parity": true
+    },
+    {
+      "path": "backend/app/external_lab/__init__.py",
+      "sha256": "daa708f54b7c8af2efde642f826019d4876e425acc01389785f1f6f1b56d1482",
+      "parity": true
+    },
+    {
+      "path": "backend/app/external_lab/contracts.py",
+      "sha256": "04cc5b6928792c98befa557f0c8dd3688ccf3a9e488a0fbc80c8afa02af0a5d8",
+      "parity": true
+    },
+    {
+      "path": "backend/app/services/run_snapshot.py",
+      "sha256": "9d54cc8eaae9c814d85ca902564b794d6d8568c636a44a69a56770470de16852",
+      "parity": true
+    },
+    {
+      "path": "backend/app/services/demo_presentation.py",
+      "sha256": "103ff2979445da0042a2e51e99246cdecc693053c1d914577b825ae4d80361b1",
+      "parity": true
+    },
+    {
+      "path": "backend/app/services/findings.py",
+      "sha256": "34c86afd455233aeb8200b8208930d713473cbc4ccad41280a152407108772bf",
+      "parity": true
+    },
+    {
+      "path": "backend/app/services/batch_plan.py",
+      "sha256": "af42ff09fa4e68a8f394d50c5ac3ddf6038103cd6f2dcbd2811b6a6045818e6d",
+      "parity": true
+    },
+    {
+      "path": "backend/app/services/__init__.py",
+      "sha256": "1e5dd1421477f093d8463885f0d69577644c6f9960ff6dc1e21347964848e69c",
+      "parity": true
+    },
+    {
+      "path": "backend/app/services/serializers.py",
+      "sha256": "831dbce83857505ff089f5c03e404679608063d230aa69f569d44ec8fdd94ede",
+      "parity": true
+    },
+    {
+      "path": "backend/app/api/routes.py",
+      "sha256": "6684ce8fab5fe9048e7c4d693b27c8bd7fce22b48e0378b85c911d97fd91a799",
+      "parity": true
+    },
+    {
+      "path": "backend/app/api/schemas.py",
+      "sha256": "5e9b1550cdad2f502ed609f735bf95178ef6dc587967aff43e43adfc3cdc2f15",
+      "parity": true
+    },
+    {
+      "path": "backend/app/api/__init__.py",
+      "sha256": "23ce3541790946a5866d55febffc170c4a6668f81337d0ef702b34c26b141ad2",
+      "parity": true
+    },
+    {
+      "path": "backend/app/api/workflow_routes.py",
+      "sha256": "25fb2292444e9d93837a45ca096578a93fef64f9bce49c94c0621eab0b88451d",
+      "parity": true
+    },
+    {
+      "path": "backend/app/api/workflow_schemas.py",
+      "sha256": "9116410696d70caedb4fc5e7faee54f5e32299924d436974f008146cc0291e34",
+      "parity": true
+    },
+    {
+      "path": "backend/app/api/external_lab_routes.py",
+      "sha256": "cc47d61b2eb01f4c8580a504d8c293ec66795a810505f1a3fda3a8103a934cf8",
+      "parity": true
+    },
+    {
+      "path": "backend/app/core/settings.py",
+      "sha256": "1d669d046dee6ddb60d0d3836a735d7fa29fd179e1ccb98bc26fa65efdf2fe83",
+      "parity": true
+    },
+    {
+      "path": "backend/app/core/secrets.py",
+      "sha256": "314da0a5c51c45769aa9e648676339348cb51833a00374bd0453edd4c80d68e2",
+      "parity": true
+    },
+    {
+      "path": "backend/app/core/__init__.py",
+      "sha256": "33a8dc3ef6024b44796a8599dce6e6d918448c737e6f49cb8b782f5e6a7708a8",
+      "parity": true
+    },
+    {
+      "path": "backend/app/core/auth.py",
+      "sha256": "10e9cc3332e9e373f1f9e97ba6c4167b7510a28329acb0dbebdadc6d0f3a2aa6",
+      "parity": true
+    },
+    {
+      "path": "backend/app/domain/__init__.py",
+      "sha256": "191073f8499d7151c6456e71af3fe75bea7d97a854dc87b45231c54f9ea95453",
+      "parity": true
+    },
+    {
+      "path": "backend/app/domain/contracts.py",
+      "sha256": "05ba70cf685f0e67f0dd1008ba67c719faae4382bf0e687905f30be6079e238e",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/matrix/generator.py",
+      "sha256": "0be45b29b5907ef144b61b4e787b78fc613f5272c1073335b7101d77cdfa0a4f",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/matrix/__init__.py",
+      "sha256": "2a5ceda2159cb862ba6c338af42cf2742bc76e670ee79ebfc71613790c328822",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/classification/evaluator.py",
+      "sha256": "7d64a9cbc671492416755d3aa6d229a9e293d94c312a20e71f3f257c8b0d602a",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/classification/findings.py",
+      "sha256": "8056eb9e01548db15d915660758b5d93e68565222212821b14e1cec7a3434c79",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/classification/json_pointer.py",
+      "sha256": "e27243d4402a794b54f1b0a0e51c1c1817a06b173878e84dc8e111f4b6c9a208",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/classification/__init__.py",
+      "sha256": "69855a86f092e73033b888f31e23b1e07af1f7f553b3467be855bd0a5be93409",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/classification/policy.py",
+      "sha256": "fb7c9778ad9ef39ea5f9414bc4740f66aeb0faa2fe4f536b6d32b76f7ef3dd3e",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/openapi/__init__.py",
+      "sha256": "b51e689fe109e73d2e496a818d4661e1a929c2da4fa189cdfeaeb7e3ef037453",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/openapi/parser.py",
+      "sha256": "44e3442f7a36e5be74076888aab30a563af9070b755a92d6f785bb33f3a3b93d",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/execution/http_client.py",
+      "sha256": "7fa2dfb985969b5643e04579b258e5b52c5660710b999704b3f35e8d08192890",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/execution/__init__.py",
+      "sha256": "c3575db488e9fe13ba9bc6eb7e7617e08f3fa422b94a6fc4777ba8c9bb99da58",
+      "parity": true
+    },
+    {
+      "path": "backend/app/scanner/execution/scope.py",
+      "sha256": "ffd57918335c16f6381a098a6de38c6f896c4d4a4fabd015ce54a6daefdbd1e7",
+      "parity": true
+    },
+    {
+      "path": "audit-final/qa-parity-05/qa_app.py",
+      "sha256": "1aaa71cf987b9f568ed0a6ed22d37a858193f6e7a0f422f237f110cc79dbfcd3",
+      "parity": true
+    }
+  ],
+  "verified_base_url": "http://172.19.0.2:8000",
+  "localhost_18080": "BLOCKED: connection refused; NetworkSettings.Ports 8000/tcp is null; docker port empty"
+}

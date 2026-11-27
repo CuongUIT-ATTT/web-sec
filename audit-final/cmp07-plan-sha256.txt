@@ -1,0 +1,5 @@
+dc9fa405c5cb81e9fe373b156e2699d327ebabc040109cba8633eb837875213b  audit-final/cmp07-plan-5roles.csv
+4d99ad02f49ae7413641a304beab032e9c4bf686dd71e587f71129927f27c698  audit-final/cmp07-plan-cohort.json
+9636ea1a6555dfeaa70ef58898a9c4ff1b4e0acefc3006cb2b6adfdd8e76270c  audit-final/cmp07-plan-manifest.json
+cfa82d8b3a2419bfb5fd956586a9845917e7f96383610e39ca086291e2100e0d  audit-final/cmp07-plan-truth.csv
+5ca330e70de85099cf861c59989d1f2fc4f8f506075dc1cc1f5e20903b39bee0  audit-final/cmp07-plan.md

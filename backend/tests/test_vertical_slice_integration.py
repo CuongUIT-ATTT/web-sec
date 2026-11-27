@@ -134,6 +134,15 @@ def test_full_read_only_vertical_slice_survives_browser_reload(tmp_path) -> None
                 )
                 assert created.status_code == 201
 
+            # The current matrix contract requires an explicit selected mapping.
+            matrix = client.get(f"/api/projects/{project_id}/matrix", params={"operation_id": operation["id"], "resource_id": resource["id"]})
+            assert matrix.status_code == 422
+            mapping = client.post(
+                f"/api/projects/{project_id}/operation-resource-mappings",
+                json={"operation_id": operation["id"], "resource_type_id": resource_type["id"], "selected": True},
+                headers=csrf,
+            )
+            assert mapping.status_code == 201
             matrix = client.get(f"/api/projects/{project_id}/matrix", params={"operation_id": operation["id"], "resource_id": resource["id"]})
             assert matrix.status_code == 200
             assert {case["actor_identity_id"] for case in matrix.json()} == {alice["id"], bob["id"]}

@@ -6,6 +6,8 @@ import { App } from "./App";
 
 vi.mock("./api", () => ({
   api: {
+    seedSshDemo: vi.fn(),
+    deleteProject: vi.fn().mockResolvedValue(undefined),
     login: vi.fn().mockResolvedValue(undefined),
     projects: vi.fn().mockResolvedValue([]),
     logout: vi.fn().mockResolvedValue(undefined),
@@ -51,7 +53,7 @@ beforeEach(() => {
 
 describe("authorization testing workspace", () => {
   it("requires an admin password before configuration is visible", async () => {
-    render(<App />);
+    render(<App legacy />);
 
     expect(screen.getByRole("heading", { name: /trạm kiểm thử/i })).toBeInTheDocument();
     expect(screen.queryByText("Dự án đang mở")).not.toBeInTheDocument();
@@ -63,7 +65,7 @@ describe("authorization testing workspace", () => {
 
   it("queues only the fixed external read-only workflow", async () => {
     mockedApi.projects.mockResolvedValue([{ id: 1, name: "Lab", description: "Edit test" }]);
-    render(<App />);
+    render(<App legacy />);
 
     fireEvent.change(screen.getByLabelText("Mật khẩu quản trị"), { target: { value: "password" } });
     fireEvent.click(screen.getByRole("button", { name: "Vào trạm kiểm thử" }));
@@ -79,7 +81,7 @@ describe("authorization testing workspace", () => {
   it("prefills safe identity fields but never its bearer token", async () => {
     mockedApi.projects.mockResolvedValue([{ id: 1, name: "Lab", description: "Edit test" }]);
     mockedApi.identities.mockResolvedValue([{ id: 4, display_name: "Alice", role: "reader", principal_pointer: "/data/name", expected_principal: "alice", has_secret: true }]);
-    render(<App />);
+    render(<App legacy />);
 
     fireEvent.change(screen.getByLabelText("Mật khẩu quản trị"), { target: { value: "password" } });
     fireEvent.click(screen.getByRole("button", { name: "Vào trạm kiểm thử" }));
@@ -89,4 +91,41 @@ describe("authorization testing workspace", () => {
     expect(screen.getByLabelText("Tên hiển thị")).toHaveValue("Alice");
     expect(screen.getByLabelText("Bearer token thay thế (để trống để giữ token cũ)")).toHaveValue("");
   });
+});
+
+it("loads and selects the SSH project without queueing any run", async () => {
+  mockedApi.projects.mockResolvedValueOnce([]);
+  mockedApi.seedSshDemo.mockResolvedValue({project_id: 7, created: true, synthetic: false});
+  render(<App legacy />);
+  fireEvent.change(screen.getByLabelText("Mật khẩu quản trị"), {target: {value: "password"}});
+  fireEvent.click(screen.getByRole("button", {name: "Vào trạm kiểm thử"}));
+  const seed = await screen.findByRole("button", {name: "Nạp dữ liệu mẫu"});
+  mockedApi.projects.mockResolvedValue([{id: 7, name: "T18 SSH GET Lab v1", description: "SYNTHETIC"}]);
+  fireEvent.click(seed);
+  await screen.findByText(/Đã chọn dữ liệu mẫu lab SSH/);
+  expect(mockedApi.seedSshDemo).toHaveBeenCalledTimes(1);
+  expect(mockedApi.targets).toHaveBeenCalledWith(7);
+  expect(screen.getByRole("button", {name: "T18 SSH GET Lab v1"})).toHaveClass("active");
+});
+it("shows seed failure even when no project exists", async () => {
+  mockedApi.seedSshDemo.mockRejectedValue(new Error("Demo chưa được cấu hình"));
+  render(<App legacy />);
+  fireEvent.change(screen.getByLabelText("Mật khẩu quản trị"), {target: {value: "password"}});
+  fireEvent.click(screen.getByRole("button", {name: "Vào trạm kiểm thử"}));
+  fireEvent.click(await screen.findByRole("button", {name: "Nạp dữ liệu mẫu"}));
+  await screen.findByText("Demo chưa được cấu hình");
+  expect(screen.getByRole("button", {name: "Nạp dữ liệu mẫu"})).toBeEnabled();
+});
+
+it("clears the workspace after deleting its last project", async () => {
+  mockedApi.projects.mockResolvedValue([{ id: 9, name: "Temporary", description: "" }]);
+  render(<App legacy />);
+  fireEvent.change(screen.getByLabelText("Mật khẩu quản trị"), { target: { value: "password" } });
+  fireEvent.click(screen.getByRole("button", { name: "Vào trạm kiểm thử" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Xóa dự án" }));
+  fireEvent.change(screen.getByLabelText("Nhập đúng tên dự án để xóa"), { target: { value: "Temporary" } });
+  fireEvent.click(screen.getByRole("button", { name: "Xác nhận xóa vĩnh viễn" }));
+  expect(await screen.findByRole("heading", { name: "Chưa có dự án" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Temporary" })).not.toBeInTheDocument();
+  expect(mockedApi.deleteProject).toHaveBeenCalledWith(9, "Temporary");
 });

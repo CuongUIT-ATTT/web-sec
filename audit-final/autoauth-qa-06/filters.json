@@ -1,0 +1,68 @@
+[
+  {
+    "filter": "CONFIRMED_VIOLATION",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"rows\":0,\"selected\":\"CONFIRMED_VIOLATION\"}"
+        }
+      ]
+    }
+  },
+  {
+    "filter": "SUSPECTED_VIOLATION",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"rows\":0,\"selected\":\"SUSPECTED_VIOLATION\"}"
+        }
+      ]
+    }
+  },
+  {
+    "filter": "POLICY_CONSISTENT_CASE",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"rows\":0,\"selected\":\"POLICY_CONSISTENT_CASE\"}"
+        }
+      ]
+    }
+  },
+  {
+    "filter": "INVALID_TEST",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"rows\":0,\"selected\":\"INVALID_TEST\"}"
+        }
+      ]
+    }
+  },
+  {
+    "filter": "INSUFFICIENT_EVIDENCE",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"rows\":0,\"selected\":\"INSUFFICIENT_EVIDENCE\"}"
+        }
+      ]
+    }
+  },
+  {
+    "filter": "NOT_RUN",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"rows\":1,\"selected\":\"NOT_RUN\"}"
+        }
+      ]
+    }
+  }
+]

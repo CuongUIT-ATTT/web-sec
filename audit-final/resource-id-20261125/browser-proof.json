@@ -1,0 +1,20 @@
+{
+  "environment": "isolated QA on 127.0.0.1:18989; temporary SQLite, stopped worker, no lab credentials",
+  "cachedSensitiveValues": 0,
+  "overflow": false,
+  "resources": "resource-1\nssh-book · Owner: identity-1 · userA · Role: user · Path parameter: book_id\nẨn ID\n\nID tài nguyên: book-A1\n\nPath parameter: book_id\n\nRequest preview từ dữ liệu đã lưu; chưa gửi tới lab.\n\nGET /books/book-A1\nresource-2\nssh-book · Owner: identity-1 · userA · Role: user · Path parameter: book_id\nẨn ID\n\nID tài nguyên: book-A2\n\nPath parameter: book_id\n\nRequest preview từ dữ liệu đã lưu; chưa gửi tới lab.\n\nGET /books/book-A2\nresource-3\nssh-book · Owner: identity-2 · userB · Role: user · Path parameter: book_id\nẨn ID\n\nID tài nguyên: book-B1\n\nPath parameter: book_id\n\nRequest preview từ dữ liệu đã lưu; chưa gửi tới lab.\n\nGET /books/book-B1\nresource-4\nssh-book · Owner: identity-2 · userB · Role: user · Path parameter: book_id\nẨn ID\n\nID tài nguyên: book-B2\n\nPath parameter: book_id\n\nRequest preview từ dữ liệu đã lưu; chưa gửi tới lab.\n\nGET /books/book-B2",
+  "widths": [
+    373,
+    373,
+    373,
+    373
+  ],
+  "checks": {
+    "explicit_reveal": true,
+    "project_switch_clears_id": true,
+    "return_requires_reveal": true,
+    "reload_then_login_preserves_four_ids": true,
+    "save_existing_resource_success": true,
+    "save_hides_previous_reveal": true
+  }
+}

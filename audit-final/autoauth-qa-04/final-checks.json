@@ -1,0 +1,21 @@
+{
+  "utc": "2026-11-16T09:32:58.418453+00:00",
+  "source_unchanged": true,
+  "temporary_apps_stopped": {
+    "18984": true,
+    "18985": true
+  },
+  "focused_command": "AUTOAUTH_EXEC_EVIDENCE_DIR=\"$PWD/audit-final/autoauth-qa-04\" .venv/bin/python -m pytest backend/tests/test_authorization_execution.py backend/tests/test_authorization_model.py -q",
+  "focused_exit": 0,
+  "coverage_command": ".venv/bin/python audit-final/autoauth-qa-04/coverage_probe.py",
+  "coverage_exits": [
+    1,
+    1,
+    0
+  ],
+  "fixture_exit_codes": [
+    0,
+    0
+  ],
+  "automation_count": 0
+}

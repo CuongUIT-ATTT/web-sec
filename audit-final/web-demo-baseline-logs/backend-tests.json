@@ -1,0 +1,20 @@
+{
+  "name": "backend-tests",
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "backend/tests",
+    "-q",
+    "--ignore=backend/tests/test_vertical_slice_integration.py",
+    "-p",
+    "no:cacheprovider",
+    "--tb=short"
+  ],
+  "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+  "start_utc": "2026-11-13T13:32:40.467543+00:00",
+  "end_utc": "2026-11-13T13:32:47.991030+00:00",
+  "exit_code": 0,
+  "status": "PASS",
+  "log": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project/audit-final/web-demo-baseline-logs/backend-tests.log"
+}

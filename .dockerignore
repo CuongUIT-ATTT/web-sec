@@ -1,0 +1,24 @@
+# Production images need only application sources. Exclude secrets, DBs and evidence.
+**
+!pyproject.toml
+!README.md
+!backend/
+!backend/**
+!frontend/
+!frontend/**
+!deploy/
+!deploy/Dockerfile
+!deploy/Dockerfile.synthetic
+!deploy/synthetic_lab.py
+backend/tests/
+**/__pycache__/
+**/*.pyc
+frontend/node_modules/
+frontend/dist/
+frontend/data/
+**/.env
+**/.env.*
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.key

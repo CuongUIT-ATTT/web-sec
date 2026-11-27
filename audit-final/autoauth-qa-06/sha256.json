@@ -1,0 +1,17 @@
+{
+  "audit-final/autoauth-qa-06/browser-observations.json": "ecd96114366ede8ba170afd552481ec5b576c59b8ac986137d740b1968f835fb",
+  "audit-final/autoauth-qa-06/cancel-environment.json": "277b219257a96e18fa4e8dacf4df77c3e55e593acacc293f88bb13e275f6c4a9",
+  "audit-final/autoauth-qa-06/cancel_fixture.py": "be6b25ff83e94059b28dff18f5bcc510edd476680b27b384b9fe192784f99f65",
+  "audit-final/autoauth-qa-06/check-0.log": "11fb3f5cfc255b7e2d885bcef6f13aaf833c77d0579bcd6141a742b8b886022d",
+  "audit-final/autoauth-qa-06/check-1.log": "e22ccdcf0c52eae90e43b9e45dbff1ab8f483f2782ef4a4bd4cc689a62c2dd29",
+  "audit-final/autoauth-qa-06/check-2.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "audit-final/autoauth-qa-06/check-3.log": "ccbf312579bf425f781dea2243b73c5ed47161d96b459bdf93f5d00b922565ca",
+  "audit-final/autoauth-qa-06/check-4.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "audit-final/autoauth-qa-06/execution.json": "161e21a73bd886ddb4029d18262f7d3799d87fdac5c992fc64b6deb81300b3bc",
+  "audit-final/autoauth-qa-06/filters.json": "18521c496d6a1102ecc71cb3ec8c62bd4000b77b3770839bc9baf126062efc6d",
+  "audit-final/autoauth-qa-06/fixture-inventory.json": "94b55bb78a190b8940fdeeeee89c7c8f68d691843739c47bd763c166236953df",
+  "audit-final/autoauth-qa-06/focused.log": "fa2e2304afca4f1be169cd4d6d8751d865c1f7041417e749c4364a9dafb492b8",
+  "audit-final/autoauth-qa-06/inventory.json": "2e6dc3578b4dd990954260f381d0093a189abf181f25db806270c21155770036",
+  "audit-final/autoauth-qa-06/post-source-check.json": "e74e286afe6ea450eb3c2ee99292cef2b34352464fc1476113cf30acdccf1a49",
+  "audit-final/autoauth-qa-06/responsive.json": "18ab4ac4c26ae08a115cdbc67c41fc82e6c4627fbdd231ade06317ed9735fdbd"
+}

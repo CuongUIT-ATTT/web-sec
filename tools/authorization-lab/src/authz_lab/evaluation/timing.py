@@ -38,7 +38,8 @@ def _validate_timing_payload(payload: Any, source: Path) -> TimingEvidence:
     if (
         isinstance(elapsed_ms, bool)
         or not isinstance(elapsed_ms, (int, float))
-        or not math.isfinite(elapsed_ms)
+        or (isinstance(elapsed_ms, float) and not math.isfinite(elapsed_ms))
+        or elapsed_ms > 1.7976931348623157e308
         or elapsed_ms < 0
     ):
         return TimingEvidence(
@@ -82,6 +83,6 @@ def load_timing_evidence(
 
     try:
         payload = read_json(source)
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         return TimingEvidence("INVALID", source, None, None, f"Timing evidence could not be read: {error}")
     return _validate_timing_payload(payload, source)

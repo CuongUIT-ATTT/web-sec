@@ -254,3 +254,25 @@ class RunResult(Timestamped, Base):
     reason_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     http_status: Mapped[int | None] = mapped_column(Integer)
     response_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class ComparisonBundle(Base):
+    """Append-only sanitized comparison snapshots, independent of historical runs."""
+    __tablename__ = "comparison_bundles"
+    __table_args__ = (UniqueConstraint("project_id", "content_digest", name="uq_comparison_project_digest"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    content_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class ProjectAuthorizationRevision(Base):
+    """Append-only reusable configuration; no mutation of legacy policy/run tables."""
+    __tablename__ = "project_authorization_revisions"
+    __table_args__ = (UniqueConstraint("project_id", "revision", name="uq_project_auth_revision"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    revision: Mapped[str] = mapped_column(String(64), nullable=False)
+    configuration: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

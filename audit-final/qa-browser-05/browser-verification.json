@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-11-15T22:13:26.642926+07:00",
+  "url": "http://127.0.0.1:18080/",
+  "head": "bdbba9933ca057cb2247c3a1de9b3ee239c452bd",
+  "browser_observation": "Login form: Mật khẩu quản trị; Vào trạm kiểm thử",
+  "login": "BLOCKED: secure saved-login mechanism reports no saved logins; no supported local-file credential input",
+  "assets": [
+    {
+      "path": "/assets/index-DUcU0a2p.js",
+      "http": 200,
+      "sha256": "5b86d026aa71e91f79d95b21c35c351a18142ca7efd00082bbf084f064887265"
+    },
+    {
+      "path": "/assets/index-CwTufpIY.css",
+      "http": 200,
+      "sha256": "8e65978fa0644f64fb1c056c39058852c0a85100d12fb03b44496a35ec849591"
+    }
+  ],
+  "parity_with_handoff": true,
+  "authenticated_flow": "NOT_RUN",
+  "experimental_acceptance": "PARTIAL",
+  "secret_read": false,
+  "tests_rerun": false
+}

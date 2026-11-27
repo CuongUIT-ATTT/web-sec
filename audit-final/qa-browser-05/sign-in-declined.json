@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-11-15T22:21:25.360480+07:00",
+  "source": "User sign-in update in current assignment",
+  "sign_in": "DECLINED",
+  "authenticated_browser_e2e": "BLOCKED",
+  "authenticated_checklist": "NOT_RUN",
+  "overall": "PARTIAL",
+  "prior_asset_parity": "PASS at 2026-11-15T22:13:26.642926+07:00; not rerun",
+  "new_browser_or_login_attempt": false,
+  "credential_read": false,
+  "new_tests": "NOT_RUN",
+  "runtime_run2_lab_untouched": true,
+  "recovery": "Only if operator later chooses to sign in directly in Browser tab of Screen panel, resume same QA URL; no new sign-in request issued."
+}

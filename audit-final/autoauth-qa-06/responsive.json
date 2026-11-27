@@ -1,0 +1,21 @@
+{
+  "surface": "mounted Browser tab",
+  "actual": [
+    1280,
+    800
+  ],
+  "document_scrollWidth": 1265,
+  "attempt": "window.resizeTo(390,844)",
+  "after": [
+    1280,
+    800
+  ],
+  "requested_viewports": [
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "verdict": "NOT VERIFIED",
+  "blocker": "Mounted browser exposes no resize/emulation action; resizeTo had no effect. No alternate browser used."
+}

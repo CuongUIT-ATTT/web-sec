@@ -1,0 +1,14 @@
+backend/app/services/authorization_model.py: FAILED
+backend/app/api/authorization_routes.py: FAILED
+backend/app/main.py: OK
+backend/app/persistence/models.py: OK
+backend/app/persistence/upgrades.py: OK
+backend/app/scanner/openapi/parser.py: OK
+backend/tests/test_authorization_model.py: OK
+backend/tests/test_database_upgrades.py: OK
+audit-final/autoauth-model-matrix-01.md: OK
+results/autoauth-model-matrix-01/backend-full.txt: OK
+results/autoauth-model-matrix-01/backend-full-final.txt: OK
+results/autoauth-model-matrix-01/focused.txt: OK
+results/autoauth-model-matrix-01/execution.json: OK
+sha256sum: WARNING: 2 computed checksums did NOT match

@@ -1,0 +1,4 @@
+cebef08d5374597dc7999ec2a9c51dbdbc1d06c5e961d75c2a3630dada289230  audit-final/cmp07-review-verification.json
+7169672d3a7cd3538b031708cee0fbde3f16ecace67c7e54b115a214907a2049  audit-final/cmp07-review-worksheet.csv
+a448023fed3bdef0db4de4081b7be3edd96192ab515f1ce5b0de25a6a4847624  audit-final/cmp07-review.md
+# git diff --check: PASS; existing 649 file hashes unchanged on final recheck

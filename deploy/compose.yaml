@@ -6,11 +6,24 @@ services:
     env_file:
       - ../.env
     environment:
+      AUTHZ_DEMO_TARGET_URL: http://127.0.0.1:5099
+      AUTHZ_ALLOWED_TARGET_NETWORKS: "${AUTHZ_ALLOWED_TARGET_NETWORKS:?Configure lab networks in .env},127.0.0.1/32"
+      AUTHZ_ALLOWED_TARGET_PORTS: "${AUTHZ_ALLOWED_TARGET_PORTS:-80,443,5000},5099"
       AUTHZ_DATABASE_PATH: /var/lib/authz/authz-web.sqlite3
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - authz-data:/var/lib/authz
+    restart: unless-stopped
+
+  synthetic-lab:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.synthetic
+    network_mode: "service:authz-web"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
 volumes:

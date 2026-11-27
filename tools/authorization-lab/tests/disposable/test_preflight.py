@@ -60,6 +60,7 @@ class DisposableBflaPreflightTests(unittest.TestCase):
                     "compose_project": self.project,
                     "shared_week1_before": {"id": "shared-id", "state": "running"},
                     "disposable_image_id": "sha256:lab-image",
+                    "compose_file_sha256": preflight.compose_digest(),
                     "port_5003_available_before_compose": True,
                     "existing_project_objects": {"containers": [], "volumes": []},
                     "credential_or_response_bodies_exported": False,
@@ -77,3 +78,21 @@ class DisposableBflaPreflightTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ComposeDigestTests(unittest.TestCase):
+    def test_missing_or_changed_digest_rejected(self):
+        fixture = DisposableBflaPreflightTests('test_receipt_must_bind_to_exact_run_and_project')
+        fixture.setUp()
+        try:
+            fixture.test_receipt_must_bind_to_exact_run_and_project()
+            path = fixture.results_root / fixture.run_id / 'preflight-receipt.json'
+            original = json.loads(path.read_text())
+            for digest in [None, '0' * 64]:
+                with self.subTest(digest=digest):
+                    record = dict(original)
+                    record['compose_file_sha256'] = digest
+                    path.write_text(json.dumps(record))
+                    with self.assertRaises(BflaManifestError):
+                        preflight.load_preflight_receipt(fixture.run_id, fixture.project, fixture.results_root)
+        finally:
+            fixture.doCleanups()

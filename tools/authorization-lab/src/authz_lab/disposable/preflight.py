@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import socket
 import subprocess
 from pathlib import Path
 from typing import Any
 
-from authz_lab.common import read_json, write_redacted_json
+from authz_lab.common import read_json
 
 from .manifest import (
     ALLOWED_BASE_URL,
@@ -22,11 +23,23 @@ from .manifest import (
     validate_run_id,
 )
 from .runner import _assert_private_directory
+from .stage import lifecycle, durable_json
 
 
 def preflight_receipt_path(run_id: str, results_root: str | Path = "results/bfla-disposable") -> Path:
     """Return the non-secret preflight receipt path for one disposable run."""
     return Path(results_root) / validate_run_id(run_id) / "preflight-receipt.json"
+
+
+def compose_path() -> Path:
+    return Path(__file__).resolve().parents[5] / "deploy/labs/vampi-bfla-disposable.compose.yaml"
+
+
+def compose_digest() -> str:
+    path = compose_path()
+    if path.is_symlink() or not path.is_file():
+        raise BflaManifestError("Fixed disposable Compose file is unavailable.")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _run(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -107,9 +120,12 @@ def load_preflight_receipt(run_id: str, project: str, results_root: str | Path =
     image_id = receipt.get("disposable_image_id")
     if not isinstance(image_id, str) or not image_id:
         raise BflaManifestError("Disposable preflight receipt lacks an attested image identity.")
+    if receipt.get("compose_file_sha256") != compose_digest():
+        raise BflaManifestError("Disposable Compose digest is missing or changed.")
     return receipt
 
 
+@lifecycle("preflight")
 def preflight(
     run_id: str,
     project: str,
@@ -141,10 +157,11 @@ def preflight(
         "compose_project": project,
         "shared_week1_before": shared,
         "disposable_image_id": _image_id(),
+        "compose_file_sha256": compose_digest(),
         "port_5003_available_before_compose": True,
         "existing_project_objects": {"containers": [], "volumes": []},
         "credential_or_response_bodies_exported": False,
         "status": "PREFLIGHT_COMPLETE",
     }
-    write_redacted_json(preflight_receipt_path(run_id, results_root), receipt)
+    durable_json(preflight_receipt_path(run_id, results_root), receipt)
     return receipt

@@ -121,3 +121,9 @@ PYTHONPATH=tools/authorization-lab/src python -m pytest tools/authorization-lab/
 - Credentials, `roles_config.json`, `.env`, private ZAP Context/session files, `.bfla-runs`, `results/`, databases, frontend builds và downloaded VAmPI source vẫn ignored/local-only.
 - `deploy/labs/vampi-bfla-disposable.compose.yaml` giữ loopback binding, dedicated volume và guardrails hiện có.
 - Web app không chạy ZAP/BFLA hoặc legacy CLI; CLI không import `backend.app`.
+
+### Hướng dẫn vận hành Web Control Room
+
+Xem hướng dẫn đầy đủ về kiểm tra cấu hình `T18 SSH GET Lab v1`, xem ID tài nguyên đã lưu (`Xem ID đã lưu`), thiết lập quy tắc quyền, chạy kiểm thử và đọc kết quả/bằng chứng tại [docs/huong-dan-chay-du-an.vi.md](docs/huong-dan-chay-du-an.vi.md).
+
+API synthetic `/api/demo/seed` và service `synthetic-lab` vẫn tồn tại riêng; kết quả synthetic không thay cho thực nghiệm nghiên cứu trên SSH lab. Build lại giữ dữ liệu trong volume; không dùng `down -v` nếu cần giữ lịch sử.

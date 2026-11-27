@@ -94,6 +94,19 @@ class TimingEvidenceTests(unittest.TestCase):
         self.assertEqual(timing.status, "INVALID")
         self.assertIsNone(timing.elapsed_ms)
 
+    def test_rejects_nonfinite_negative_boolean_and_huge_timing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for elapsed in (math.nan, math.inf, -math.inf, -1, True, 10 ** 400):
+                source = self.write_json(Path(directory) / "timing.json", {**VALID_TIMING, "elapsed_ms": elapsed})
+                self.assertEqual(load_timing_evidence(results_root=directory, timing_file=source).status, "INVALID")
+
+    def test_invalid_current_does_not_fall_back_to_legacy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_json(root / CURRENT_TIMING_FILENAME, {"status": "NOT_RUN"})
+            self.write_json(root / LEGACY_TIMING_FILENAMES[0], VALID_TIMING)
+            self.assertEqual(load_timing_evidence(results_root=root).status, "INVALID")
+
 
 if __name__ == "__main__":
     unittest.main()

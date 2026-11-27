@@ -1,0 +1,16 @@
+{
+  "command": [
+    "npm",
+    "--prefix",
+    "frontend",
+    "run",
+    "build",
+    "--",
+    "--outDir",
+    "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project/audit-final/web-demo-integration-qa-logs/frontend-dist"
+  ],
+  "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+  "start": "2026-11-13T13:51:17.791217+00:00",
+  "end": "2026-11-13T13:51:19.352042+00:00",
+  "exit": 0
+}

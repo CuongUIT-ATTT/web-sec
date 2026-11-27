@@ -1,0 +1,13 @@
+{
+  "command": [
+    "npm",
+    "--prefix",
+    "frontend",
+    "run",
+    "lint"
+  ],
+  "cwd": "/home/cuong/D\u1ef1 \u00e1n/B\u1ea3o m\u1eadt web/Project",
+  "start": "2026-11-13T13:51:16.736480+00:00",
+  "end": "2026-11-13T13:51:17.790638+00:00",
+  "exit": 0
+}

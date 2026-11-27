@@ -1,0 +1,2326 @@
+
+ RUN  v5.0.5 /home/cuong/Dự án/Bảo mật web/Project/frontend
+
+ ❯ src/WebDemo.test.tsx (6 tests | 4 failed) 2836ms
+   × preserves role/resource edit and switches exclusively to identity 218ms
+   × renders resolved matrix fields from response 1149ms
+   × requests run-scoped findings, reports missing evidence and ignores stale other-run response 395ms
+   × blocks duplicate cancellation while request is pending 309ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/WebDemo.test.tsx > preserves role/resource edit and switches exclusively to identity
+TestingLibraryElementError: Unable to find a label with the text of: Role áp dụng
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"masthead"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"signal"[39m
+          [36m>[39m
+            [0mCONTROLLED AUTHORIZATION TESTING[0m
+          [36m</p>[39m
+          [36m<h1>[39m
+            [0mTrạm kiểm thử phân quyền[0m
+          [36m</h1>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"scope-note"[39m
+        [36m>[39m
+          [36m<b>[39m
+            [0mGET-only MVP[0m
+          [36m</b>[39m
+          [36m<span>[39m
+            [0mBearer · JSON · IP allowlist[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mĐăng xuất[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<h2>[39m
+          [0mDự án[0m
+        [36m</h2>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"compact-form"[39m
+        [36m>[39m
+          [36m<label>[39m
+            [0mTên dự án[0m
+            [36m<input[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mMô tả[0m
+            [36m<textarea />[39m
+          [36m</label>[39m
+          [36m<button>[39m
+            [0mTạo dự án[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-list"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"project active"[39m
+          [36m>[39m
+            [0mQA synthetic[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"rail-foot"[39m
+        [36m>[39m
+          [0mThông tin bí mật chỉ được gửi trong biểu mẫu, mã hoá ở server và không được trả về giao diện.[0m
+        [36m</p>[39m
+      [36m</aside>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"workspace"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"signal"[39m
+            [36m>[39m
+              [0mDỰ ÁN ĐANG MỞ[0m
+            [36m</p>[39m
+            [36m<h2>[39m
+              [0mQA synthetic[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mmock only[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mSửa dự án[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+          [33mclass[39m=[32m"workflow-nav"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-01"[39m
+          [36m>[39m
+            [0mThiết lập[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-05"[39m
+          [36m>[39m
+            [0mMa trận[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-06"[39m
+          [36m>[39m
+            [0mThực thi & findings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#comparison"[39m
+          [36m>[39m
+            [0mSo sánh[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-07"[39m
+          [36m>[39m
+            [0mBridge tùy chọn[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"station-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            [33mid[39m=[32m"station-01"[39m
+          [36m>[39m
+            [36m<header>[39m
+              [36m<span>[39m
+                [0m01[0m
+              [36m</span>[39m
+              [36m<div>[39m
+                [36m<h3>[39m
+                  [0mAPI đích có phạm vi[0m
+                [36m</h3>[39m
+                [36m<p>[39m
+                  [0mChỉ chấp nhận IP/CIDR, port và đường dẫn đã allowlist.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</header>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"panel-content"[39m
+            [36m>[39m
+              [36m<form[39m
+                [33mclass[39m=[32m"compact-form"[39m
+              [36m>[39m
+                [36m<label>[39m
+                  [0mBase URL IP lab[0m
+                  [36m<input[39m
+                    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mĐường dẫn kiểm tra principal[0m
+                  [36m<input[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m"/me"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mTimeout (giây)[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"30"[39m
+                    [33mmin[39m=[32m"0.1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mstep[39m=[32m"0.1"[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"5"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mGiới hạn request[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"1000"[39m
+                    [33mmin[39m=[32m"1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"100"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"actions"[39m
+                [36m>[39m
+                  [36m<button>[39m
+                    [0mThêm API đích[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</form>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m/>[39m
+            [36m</div>[39m
+          [36m</article>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            ...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ getAllByLabelText node_modules/@testing-library/dom/dist/queries/label-text.js:111:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/WebDemo.test.tsx:40:17
+     38|   mock.policies.mockResolvedValue([{ id: 10, version: 3, operation_id:…
+     39|   await open(); change("Policy đang sửa", "10");
+     40|   expect(screen.getByLabelText("Role áp dụng")).toHaveValue("reader");…
+       |                 ^
+     41|   change("Chủ thể policy", "identity"); change("Danh tính áp dụng", "4…
+     42|   expect(mock.updatePolicy).toHaveBeenCalledWith(10, { operation_id: 7…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/WebDemo.test.tsx > renders resolved matrix fields from response
+TestingLibraryElementError: Unable to find an element with the text: DENY · RESOLVED. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"masthead"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"signal"[39m
+          [36m>[39m
+            [0mCONTROLLED AUTHORIZATION TESTING[0m
+          [36m</p>[39m
+          [36m<h1>[39m
+            [0mTrạm kiểm thử phân quyền[0m
+          [36m</h1>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"scope-note"[39m
+        [36m>[39m
+          [36m<b>[39m
+            [0mGET-only MVP[0m
+          [36m</b>[39m
+          [36m<span>[39m
+            [0mBearer · JSON · IP allowlist[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mĐăng xuất[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<h2>[39m
+          [0mDự án[0m
+        [36m</h2>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"compact-form"[39m
+        [36m>[39m
+          [36m<label>[39m
+            [0mTên dự án[0m
+            [36m<input[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mMô tả[0m
+            [36m<textarea />[39m
+          [36m</label>[39m
+          [36m<button>[39m
+            [0mTạo dự án[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-list"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"project active"[39m
+          [36m>[39m
+            [0mQA synthetic[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"rail-foot"[39m
+        [36m>[39m
+          [0mThông tin bí mật chỉ được gửi trong biểu mẫu, mã hoá ở server và không được trả về giao diện.[0m
+        [36m</p>[39m
+      [36m</aside>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"workspace"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"signal"[39m
+            [36m>[39m
+              [0mDỰ ÁN ĐANG MỞ[0m
+            [36m</p>[39m
+            [36m<h2>[39m
+              [0mQA synthetic[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mmock only[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mSửa dự án[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+          [33mclass[39m=[32m"workflow-nav"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-01"[39m
+          [36m>[39m
+            [0mThiết lập[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-05"[39m
+          [36m>[39m
+            [0mMa trận[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-06"[39m
+          [36m>[39m
+            [0mThực thi & findings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#comparison"[39m
+          [36m>[39m
+            [0mSo sánh[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-07"[39m
+          [36m>[39m
+            [0mBridge tùy chọn[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"station-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            [33mid[39m=[32m"station-01"[39m
+          [36m>[39m
+            [36m<header>[39m
+              [36m<span>[39m
+                [0m01[0m
+              [36m</span>[39m
+              [36m<div>[39m
+                [36m<h3>[39m
+                  [0mAPI đích có phạm vi[0m
+                [36m</h3>[39m
+                [36m<p>[39m
+                  [0mChỉ chấp nhận IP/CIDR, port và đường dẫn đã allowlist.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</header>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"panel-content"[39m
+            [36m>[39m
+              [36m<form[39m
+                [33mclass[39m=[32m"compact-form"[39m
+              [36m>[39m
+                [36m<label>[39m
+                  [0mBase URL IP lab[0m
+                  [36m<input[39m
+                    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mĐường dẫn kiểm tra principal[0m
+                  [36m<input[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m"/me"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mTimeout (giây)[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"30"[39m
+                    [33mmin[39m=[32m"0.1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mstep[39m=[32m"0.1"[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"5"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mGiới hạn request[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"1000"[39m
+                    [33mmin[39m=[32m"1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"100"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"actions"[39m
+                [36m>[39m
+                  [36m<button>[39m
+                    [0mThêm API đích[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</form>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m>[39m
+                [36m<li>[39m
+                  [36m<div>[39m
+                    [36m<b>[39m
+                      [0mhttp://127.0.0.1:5000[0m...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"masthead"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"signal"[39m
+          [36m>[39m
+            [0mCONTROLLED AUTHORIZATION TESTING[0m
+          [36m</p>[39m
+          [36m<h1>[39m
+            [0mTrạm kiểm thử phân quyền[0m
+          [36m</h1>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"scope-note"[39m
+        [36m>[39m
+          [36m<b>[39m
+            [0mGET-only MVP[0m
+          [36m</b>[39m
+          [36m<span>[39m
+            [0mBearer · JSON · IP allowlist[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mĐăng xuất[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<h2>[39m
+          [0mDự án[0m
+        [36m</h2>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"compact-form"[39m
+        [36m>[39m
+          [36m<label>[39m
+            [0mTên dự án[0m
+            [36m<input[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mMô tả[0m
+            [36m<textarea />[39m
+          [36m</label>[39m
+          [36m<button>[39m
+            [0mTạo dự án[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-list"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"project active"[39m
+          [36m>[39m
+            [0mQA synthetic[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"rail-foot"[39m
+        [36m>[39m
+          [0mThông tin bí mật chỉ được gửi trong biểu mẫu, mã hoá ở server và không được trả về giao diện.[0m
+        [36m</p>[39m
+      [36m</aside>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"workspace"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"signal"[39m
+            [36m>[39m
+              [0mDỰ ÁN ĐANG MỞ[0m
+            [36m</p>[39m
+            [36m<h2>[39m
+              [0mQA synthetic[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mmock only[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mSửa dự án[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+          [33mclass[39m=[32m"workflow-nav"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-01"[39m
+          [36m>[39m
+            [0mThiết lập[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-05"[39m
+          [36m>[39m
+            [0mMa trận[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-06"[39m
+          [36m>[39m
+            [0mThực thi & findings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#comparison"[39m
+          [36m>[39m
+            [0mSo sánh[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-07"[39m
+          [36m>[39m
+            [0mBridge tùy chọn[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"station-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            [33mid[39m=[32m"station-01"[39m
+          [36m>[39m
+            [36m<header>[39m
+              [36m<span>[39m
+                [0m01[0m
+              [36m</span>[39m
+              [36m<div>[39m
+                [36m<h3>[39m
+                  [0mAPI đích có phạm vi[0m
+                [36m</h3>[39m
+                [36m<p>[39m
+                  [0mChỉ chấp nhận IP/CIDR, port và đường dẫn đã allowlist.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</header>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"panel-content"[39m
+            [36m>[39m
+              [36m<form[39m
+                [33mclass[39m=[32m"compact-form"[39m
+              [36m>[39m
+                [36m<label>[39m
+                  [0mBase URL IP lab[0m
+                  [36m<input[39m
+                    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mĐường dẫn kiểm tra principal[0m
+                  [36m<input[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m"/me"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mTimeout (giây)[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"30"[39m
+                    [33mmin[39m=[32m"0.1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mstep[39m=[32m"0.1"[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"5"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mGiới hạn request[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"1000"[39m
+                    [33mmin[39m=[32m"1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"100"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"actions"[39m
+                [36m>[39m
+                  [36m<button>[39m
+                    [0mThêm API đích[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</form>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m>[39m
+                [36m<li>[39m
+                  [36m<div>[39m
+                    [36m<b>[39m
+                      [0mhttp://127.0.0.1:5000[0m...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/WebDemo.test.tsx:47:23
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/WebDemo.test.tsx > requests run-scoped findings, reports missing evidence and ignores stale other-run response
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Xem kết quả"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"shell"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"masthead"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"signal"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"rail-foot"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"signal"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Trạm kiểm thử phân quyền":
+  [36m<h1 />[39m
+
+  Name "Dự án":
+  [36m<h2 />[39m
+
+  Name "QA synthetic":
+  [36m<h2 />[39m
+
+  Name "API đích có phạm vi":
+  [36m<h3 />[39m
+
+  Name "Danh tính độc lập":
+  [36m<h3 />[39m
+
+  Name "OpenAPI và operation GET":
+  [36m<h3 />[39m
+
+  Name "Tài nguyên và mapping":
+  [36m<h3 />[39m
+
+  Name "Mapping, chính sách và ma trận":
+  [36m<h3 />[39m
+
+  Name "Batch run và bằng chứng":
+  [36m<h3 />[39m
+
+  Name "Xác minh lab read-only bên ngoài":
+  [36m<h3 />[39m
+
+  Name "Operator-side bridge only":
+  [36m<h4 />[39m
+
+  Name "So sánh phương pháp":
+  [36m<h3 />[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Đăng xuất":
+  [36m<button[39m
+    [33mclass[39m=[32m"quiet"[39m
+  [36m/>[39m
+
+  Name "Tạo dự án":
+  [36m<button />[39m
+
+  Name "QA synthetic":
+  [36m<button[39m
+    [33mclass[39m=[32m"project active"[39m
+  [36m/>[39m
+
+  Name "Sửa dự án":
+  [36m<button[39m
+    [33mclass[39m=[32m"quiet"[39m
+  [36m/>[39m
+
+  Name "Thêm API đích":
+  [36m<button />[39m
+
+  Name "Thêm danh tính":
+  [36m<button />[39m
+
+  Name "Nhập OpenAPI":
+  [36m<button />[39m
+
+  Name "Tạo loại resource":
+  [36m<button />[39m
+
+  Name "Thêm mapping batch":
+  [36m<button[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Tạo policy":
+  [36m<button />[39m
+
+  Name "Sinh ma trận read-only":
+  [36m<button[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Queue all selected GET mappings":
+  [36m<button[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Queue read-only verification":
+  [36m<button />[39m
+
+  --------------------------------------------------
+  complementary:
+
+  Name "":
+  [36m<aside[39m
+    [33mclass[39m=[32m"rail"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Tên dự án":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Mô tả":
+  [36m<textarea />[39m
+
+  Name "Base URL IP lab":
+  [36m<input[39m
+    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Đường dẫn kiểm tra principal":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/me"[39m
+  [36m/>[39m
+
+  Name "Tên hiển thị":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Vai trò":
+  [36m<input[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Principal pointer":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/data/username"[39m
+  [36m/>[39m
+
+  Name "Principal mong đợi":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "OpenAPI JSON":
+  [36m<textarea[39m
+    [33mclass[39m=[32m"code-input"[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Loại tài nguyên":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"book"[39m
+  [36m/>[39m
+
+  Name "Resource ID pointer":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/data/id"[39m
+  [36m/>[39m
+
+  Name "Restricted pointers, phân cách dấu phẩy":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/data/secret"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  navigation:
+
+  Name "Các bước kiểm thử":
+  [36m<nav[39m
+    [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+    [33mclass[39m=[32m"workflow-nav"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Thiết lập":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-01"[39m
+  [36m/>[39m
+
+  Name "Ma trận":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-05"[39m
+  [36m/>[39m
+
+  Name "Thực thi & findings":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-06"[39m
+  [36m/>[39m
+
+  Name "So sánh":
+  [36m<a[39m
+    [33mhref[39m=[32m"#comparison"[39m
+  [36m/>[39m
+
+  Name "Bridge tùy chọn":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-07"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  article:
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-01"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-02"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-03"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-04"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-05"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-06"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-07"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  spinbutton:
+
+  Name "Timeout (giây)":
+  [36m<input[39m
+    [33mmax[39m=[32m"30"[39m
+    [33mmin[39m=[32m"0.1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mstep[39m=[32m"0.1"[39m
+    [33mtype[39m=[32m"number"[39m
+    [33mvalue[39m=[32m"5"[39m
+  [36m/>[39m
+
+  Name "Giới hạn request":
+  [36m<input[39m
+    [33mmax[39m=[32m"1000"[39m
+    [33mmin[39m=[32m"1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mtype[39m=[32m"number"[39m
+    [33mvalue[39m=[32m"100"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"evidence-list"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"evidence-list"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"operation-list"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "Chọn loại resource":
+  [36m<select />[39m
+
+  Name "Batch operation-resource mapping":
+  [36m<select />[39m
+
+  Name "Loại resource cho batch":
+  [36m<select />[39m
+
+  Name "Policy đang sửa":
+  [36m<select />[39m
+
+  Name "Operation":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Loại resource":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chủ thể policy":
+  [36m<select />[39m
+
+  Name "Danh tính áp dụng":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Phạm vi resource":
+  [36m<select />[39m
+
+  Name "Quyết định":
+  [36m<select />[39m
+
+  Name "Resource cho ma trận":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "API đích":
+  [36m<select />[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "Tạo loại mới":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn operation GET":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn loại resource":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Tạo policy mới":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn operation":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn loại":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Danh tính":
+  [36m<option[39m
+    [33mvalue[39m=[32m"identity"[39m
+  [36m/>[39m
+
+  Name "Role":
+  [36m<option[39m
+    [33mvalue[39m=[32m"role"[39m
+  [36m/>[39m
+
+  Name "Chọn danh tính":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Toàn bộ loại resource":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "ALLOW":
+  [36m<option />[39m
+
+  Name "DENY":
+  [36m<option />[39m
+
+  Name "UNKNOWN":
+  [36m<option />[39m
+
+  Name "Chọn resource":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn API":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table />[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead />[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Phương pháp Nguồn Trạng thái Thời gian":
+  [36m<tr />[39m
+
+  Name "Custom CLI Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  Name "Manual Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  Name "OWASP ZAP Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  Name "Disposable BFLA Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Phương pháp":
+  [36m<th />[39m
+
+  Name "Nguồn":
+  [36m<th />[39m
+
+  Name "Trạng thái":
+  [36m<th />[39m
+
+  Name "Thời gian":
+  [36m<th />[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Custom CLI":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  Name "Manual":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  Name "OWASP ZAP":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  Name "Disposable BFLA":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"masthead"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"signal"[39m
+          [36m>[39m
+            [0mCONTROLLED AUTHORIZATION TESTING[0m
+          [36m</p>[39m
+          [36m<h1>[39m
+            [0mTrạm kiểm thử phân quyền[0m
+          [36m</h1>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"scope-note"[39m
+        [36m>[39m
+          [36m<b>[39m
+            [0mGET-only MVP[0m
+          [36m</b>[39m
+          [36m<span>[39m
+            [0mBearer · JSON · IP allowlist[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mĐăng xuất[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<h2>[39m
+          [0mDự án[0m
+        [36m</h2>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"compact-form"[39m
+        [36m>[39m
+          [36m<label>[39m
+            [0mTên dự án[0m
+            [36m<input[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mMô tả[0m
+            [36m<textarea />[39m
+          [36m</label>[39m
+          [36m<button>[39m
+            [0mTạo dự án[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-list"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"project active"[39m
+          [36m>[39m
+            [0mQA synthetic[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"rail-foot"[39m
+        [36m>[39m
+          [0mThông tin bí mật chỉ được gửi trong biểu mẫu, mã hoá ở server và không được trả về giao diện.[0m
+        [36m</p>[39m
+      [36m</aside>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"workspace"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"signal"[39m
+            [36m>[39m
+              [0mDỰ ÁN ĐANG MỞ[0m
+            [36m</p>[39m
+            [36m<h2>[39m
+              [0mQA synthetic[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mmock only[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mSửa dự án[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+          [33mclass[39m=[32m"workflow-nav"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-01"[39m
+          [36m>[39m
+            [0mThiết lập[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-05"[39m
+          [36m>[39m
+            [0mMa trận[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-06"[39m
+          [36m>[39m
+            [0mThực thi & findings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#comparison"[39m
+          [36m>[39m
+            [0mSo sánh[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-07"[39m
+          [36m>[39m
+            [0mBridge tùy chọn[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"station-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            [33mid[39m=[32m"station-01"[39m
+          [36m>[39m
+            [36m<header>[39m
+              [36m<span>[39m
+                [0m01[0m
+              [36m</span>[39m
+              [36m<div>[39m
+                [36m<h3>[39m
+                  [0mAPI đích có phạm vi[0m
+                [36m</h3>[39m
+                [36m<p>[39m
+                  [0mChỉ chấp nhận IP/CIDR, port và đường dẫn đã allowlist.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</header>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"panel-content"[39m
+            [36m>[39m
+              [36m<form[39m
+                [33mclass[39m=[32m"compact-form"[39m
+              [36m>[39m
+                [36m<label>[39m
+                  [0mBase URL IP lab[0m
+                  [36m<input[39m
+                    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mĐường dẫn kiểm tra principal[0m
+                  [36m<input[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m"/me"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mTimeout (giây)[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"30"[39m
+                    [33mmin[39m=[32m"0.1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mstep[39m=[32m"0.1"[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"5"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mGiới hạn request[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"1000"[39m
+                    [33mmin[39m=[32m"1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"100"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"actions"[39m
+                [36m>[39m
+                  [36m<button>[39m
+                    [0mThêm API đích[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</form>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m/>[39m
+            [36m</div>[39m
+          [36m</article>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            ...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:109:15
+ ❯ src/WebDemo.test.tsx:52:40
+     50|   mock.runs.mockResolvedValue([run(1), run(2)]);
+     51|   const old = deferred<Result[]>(); mock.results.mockImplementation(id…
+     52|   await open(); const buttons = screen.getAllByRole("button", { name: …
+       |                                        ^
+     53|   expect(await screen.findByText("new-case")).toBeInTheDocument(); exp…
+     54|   await act(async () => old.resolve([result("old-case")])); expect(scr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/WebDemo.test.tsx > blocks duplicate cancellation while request is pending
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Dừng"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"shell"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"masthead"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  Name "":
+  [36m<header />[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"signal"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"rail-foot"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"signal"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  Name "":
+  [36m<p />[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Trạm kiểm thử phân quyền":
+  [36m<h1 />[39m
+
+  Name "Dự án":
+  [36m<h2 />[39m
+
+  Name "QA synthetic":
+  [36m<h2 />[39m
+
+  Name "API đích có phạm vi":
+  [36m<h3 />[39m
+
+  Name "Danh tính độc lập":
+  [36m<h3 />[39m
+
+  Name "OpenAPI và operation GET":
+  [36m<h3 />[39m
+
+  Name "Tài nguyên và mapping":
+  [36m<h3 />[39m
+
+  Name "Mapping, chính sách và ma trận":
+  [36m<h3 />[39m
+
+  Name "Batch run và bằng chứng":
+  [36m<h3 />[39m
+
+  Name "Xác minh lab read-only bên ngoài":
+  [36m<h3 />[39m
+
+  Name "Operator-side bridge only":
+  [36m<h4 />[39m
+
+  Name "So sánh phương pháp":
+  [36m<h3 />[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Đăng xuất":
+  [36m<button[39m
+    [33mclass[39m=[32m"quiet"[39m
+  [36m/>[39m
+
+  Name "Tạo dự án":
+  [36m<button />[39m
+
+  Name "QA synthetic":
+  [36m<button[39m
+    [33mclass[39m=[32m"project active"[39m
+  [36m/>[39m
+
+  Name "Sửa dự án":
+  [36m<button[39m
+    [33mclass[39m=[32m"quiet"[39m
+  [36m/>[39m
+
+  Name "Thêm API đích":
+  [36m<button />[39m
+
+  Name "Thêm danh tính":
+  [36m<button />[39m
+
+  Name "Nhập OpenAPI":
+  [36m<button />[39m
+
+  Name "Tạo loại resource":
+  [36m<button />[39m
+
+  Name "Thêm mapping batch":
+  [36m<button[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Tạo policy":
+  [36m<button />[39m
+
+  Name "Sinh ma trận read-only":
+  [36m<button[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Queue all selected GET mappings":
+  [36m<button[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Queue read-only verification":
+  [36m<button />[39m
+
+  --------------------------------------------------
+  complementary:
+
+  Name "":
+  [36m<aside[39m
+    [33mclass[39m=[32m"rail"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Tên dự án":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Mô tả":
+  [36m<textarea />[39m
+
+  Name "Base URL IP lab":
+  [36m<input[39m
+    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Đường dẫn kiểm tra principal":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/me"[39m
+  [36m/>[39m
+
+  Name "Tên hiển thị":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Vai trò":
+  [36m<input[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Principal pointer":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/data/username"[39m
+  [36m/>[39m
+
+  Name "Principal mong đợi":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "OpenAPI JSON":
+  [36m<textarea[39m
+    [33mclass[39m=[32m"code-input"[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Loại tài nguyên":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"book"[39m
+  [36m/>[39m
+
+  Name "Resource ID pointer":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/data/id"[39m
+  [36m/>[39m
+
+  Name "Restricted pointers, phân cách dấu phẩy":
+  [36m<input[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"/data/secret"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  navigation:
+
+  Name "Các bước kiểm thử":
+  [36m<nav[39m
+    [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+    [33mclass[39m=[32m"workflow-nav"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Thiết lập":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-01"[39m
+  [36m/>[39m
+
+  Name "Ma trận":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-05"[39m
+  [36m/>[39m
+
+  Name "Thực thi & findings":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-06"[39m
+  [36m/>[39m
+
+  Name "So sánh":
+  [36m<a[39m
+    [33mhref[39m=[32m"#comparison"[39m
+  [36m/>[39m
+
+  Name "Bridge tùy chọn":
+  [36m<a[39m
+    [33mhref[39m=[32m"#station-07"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  article:
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-01"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-02"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-03"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-04"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-05"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-06"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<article[39m
+    [33mclass[39m=[32m"station"[39m
+    [33mid[39m=[32m"station-07"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  spinbutton:
+
+  Name "Timeout (giây)":
+  [36m<input[39m
+    [33mmax[39m=[32m"30"[39m
+    [33mmin[39m=[32m"0.1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mstep[39m=[32m"0.1"[39m
+    [33mtype[39m=[32m"number"[39m
+    [33mvalue[39m=[32m"5"[39m
+  [36m/>[39m
+
+  Name "Giới hạn request":
+  [36m<input[39m
+    [33mmax[39m=[32m"1000"[39m
+    [33mmin[39m=[32m"1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mtype[39m=[32m"number"[39m
+    [33mvalue[39m=[32m"100"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"evidence-list"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"evidence-list"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"operation-list"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "Chọn loại resource":
+  [36m<select />[39m
+
+  Name "Batch operation-resource mapping":
+  [36m<select />[39m
+
+  Name "Loại resource cho batch":
+  [36m<select />[39m
+
+  Name "Policy đang sửa":
+  [36m<select />[39m
+
+  Name "Operation":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Loại resource":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chủ thể policy":
+  [36m<select />[39m
+
+  Name "Danh tính áp dụng":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Phạm vi resource":
+  [36m<select />[39m
+
+  Name "Quyết định":
+  [36m<select />[39m
+
+  Name "Resource cho ma trận":
+  [36m<select[39m
+    [33mrequired[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "API đích":
+  [36m<select />[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "Tạo loại mới":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn operation GET":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn loại resource":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Tạo policy mới":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn operation":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn loại":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Danh tính":
+  [36m<option[39m
+    [33mvalue[39m=[32m"identity"[39m
+  [36m/>[39m
+
+  Name "Role":
+  [36m<option[39m
+    [33mvalue[39m=[32m"role"[39m
+  [36m/>[39m
+
+  Name "Chọn danh tính":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Toàn bộ loại resource":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "ALLOW":
+  [36m<option />[39m
+
+  Name "DENY":
+  [36m<option />[39m
+
+  Name "UNKNOWN":
+  [36m<option />[39m
+
+  Name "Chọn resource":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Chọn API":
+  [36m<option[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table />[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead />[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Phương pháp Nguồn Trạng thái Thời gian":
+  [36m<tr />[39m
+
+  Name "Custom CLI Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  Name "Manual Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  Name "OWASP ZAP Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  Name "Disposable BFLA Chưa có nguồn đã xác minh trên web NOT_RUN NO_TIMING":
+  [36m<tr />[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Phương pháp":
+  [36m<th />[39m
+
+  Name "Nguồn":
+  [36m<th />[39m
+
+  Name "Trạng thái":
+  [36m<th />[39m
+
+  Name "Thời gian":
+  [36m<th />[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Custom CLI":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  Name "Manual":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  Name "OWASP ZAP":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  Name "Disposable BFLA":
+  [36m<td />[39m
+
+  Name "Chưa có nguồn đã xác minh trên web":
+  [36m<td />[39m
+
+  Name "NOT_RUN":
+  [36m<td />[39m
+
+  Name "NO_TIMING":
+  [36m<td />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"masthead"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"signal"[39m
+          [36m>[39m
+            [0mCONTROLLED AUTHORIZATION TESTING[0m
+          [36m</p>[39m
+          [36m<h1>[39m
+            [0mTrạm kiểm thử phân quyền[0m
+          [36m</h1>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"scope-note"[39m
+        [36m>[39m
+          [36m<b>[39m
+            [0mGET-only MVP[0m
+          [36m</b>[39m
+          [36m<span>[39m
+            [0mBearer · JSON · IP allowlist[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mĐăng xuất[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<h2>[39m
+          [0mDự án[0m
+        [36m</h2>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"compact-form"[39m
+        [36m>[39m
+          [36m<label>[39m
+            [0mTên dự án[0m
+            [36m<input[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mMô tả[0m
+            [36m<textarea />[39m
+          [36m</label>[39m
+          [36m<button>[39m
+            [0mTạo dự án[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-list"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"project active"[39m
+          [36m>[39m
+            [0mQA synthetic[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"rail-foot"[39m
+        [36m>[39m
+          [0mThông tin bí mật chỉ được gửi trong biểu mẫu, mã hoá ở server và không được trả về giao diện.[0m
+        [36m</p>[39m
+      [36m</aside>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"workspace"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"project-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"signal"[39m
+            [36m>[39m
+              [0mDỰ ÁN ĐANG MỞ[0m
+            [36m</p>[39m
+            [36m<h2>[39m
+              [0mQA synthetic[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mmock only[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"quiet"[39m
+          [36m>[39m
+            [0mSửa dự án[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Các bước kiểm thử"[39m
+          [33mclass[39m=[32m"workflow-nav"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-01"[39m
+          [36m>[39m
+            [0mThiết lập[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-05"[39m
+          [36m>[39m
+            [0mMa trận[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-06"[39m
+          [36m>[39m
+            [0mThực thi & findings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#comparison"[39m
+          [36m>[39m
+            [0mSo sánh[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mhref[39m=[32m"#station-07"[39m
+          [36m>[39m
+            [0mBridge tùy chọn[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"station-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            [33mid[39m=[32m"station-01"[39m
+          [36m>[39m
+            [36m<header>[39m
+              [36m<span>[39m
+                [0m01[0m
+              [36m</span>[39m
+              [36m<div>[39m
+                [36m<h3>[39m
+                  [0mAPI đích có phạm vi[0m
+                [36m</h3>[39m
+                [36m<p>[39m
+                  [0mChỉ chấp nhận IP/CIDR, port và đường dẫn đã allowlist.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</header>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"panel-content"[39m
+            [36m>[39m
+              [36m<form[39m
+                [33mclass[39m=[32m"compact-form"[39m
+              [36m>[39m
+                [36m<label>[39m
+                  [0mBase URL IP lab[0m
+                  [36m<input[39m
+                    [33mplaceholder[39m=[32m"http://127.0.0.1:5000/api"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mĐường dẫn kiểm tra principal[0m
+                  [36m<input[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mvalue[39m=[32m"/me"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mTimeout (giây)[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"30"[39m
+                    [33mmin[39m=[32m"0.1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mstep[39m=[32m"0.1"[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"5"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<label>[39m
+                  [0mGiới hạn request[0m
+                  [36m<input[39m
+                    [33mmax[39m=[32m"1000"[39m
+                    [33mmin[39m=[32m"1"[39m
+                    [33mrequired[39m=[32m""[39m
+                    [33mtype[39m=[32m"number"[39m
+                    [33mvalue[39m=[32m"100"[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"actions"[39m
+                [36m>[39m
+                  [36m<button>[39m
+                    [0mThêm API đích[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</form>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m/>[39m
+            [36m</div>[39m
+          [36m</article>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"station"[39m
+            ...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/WebDemo.test.tsx:63:39
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  4 failed | 5 passed (9)
+   Start at  20:50:16
+   Duration  4.91s (tests 51%, environment 36%, transform 5%, setup 4%, import 3%)
+

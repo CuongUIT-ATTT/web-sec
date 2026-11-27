@@ -11,6 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 
+from backend.app.api.demo_routes import router as demo_router
+from backend.app.api.authorization_routes import router as authorization_router
+from backend.app.api.comparison_routes import router as comparison_router
 from backend.app.api.routes import router
 from backend.app.api.workflow_routes import router as workflow_router
 from backend.app.api.external_lab_routes import internal_router as external_lab_internal_router
@@ -64,8 +67,11 @@ def create_app(settings: Settings) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    app.include_router(demo_router)
+    app.include_router(authorization_router)
     app.include_router(router)
     app.include_router(workflow_router)
+    app.include_router(comparison_router)
     app.include_router(external_lab_router)
     app.include_router(external_lab_internal_router)
 
